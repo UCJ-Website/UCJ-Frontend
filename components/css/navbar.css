@@ -1,0 +1,60 @@
+
+/* ===== NAV LINK ===== */
+.nav-plain {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #2c3e50;
+  padding: 6px 10px;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 0.2s, border-color 0.2s;
+}
+.nav-plain:hover {
+  color: #e85d14;
+  border-bottom-color: #e85d14;
+}
+.nav-plain i.fa-chevron-down {
+  transition: transform 0.2s;
+}
+
+/* ===== DROPDOWN WRAPPER ===== */
+.nav-group {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ===== DROPDOWN PANEL ===== */
+.dropdown-panel {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  min-width: 210px;
+  padding: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  z-index: 9999;
+}
+
+.dropdown-panel.mega-panel {
+  min-width: 480px;
+  padding: 0;
+}
+
+/* ===== SHOW ON HOVER ===== */
+.nav-group:hover .dropdown-panel {
+  display: block;
+}
+
+.nav-group:hover .nav-plain i.fa-chevron-down {
+  transform: rotate(180deg);
+}
+
