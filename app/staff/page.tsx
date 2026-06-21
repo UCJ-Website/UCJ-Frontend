@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
     Mail,
@@ -28,12 +29,20 @@ import {
 import { FaLinkedin } from "react-icons/fa";
 
 // ===== API CONFIG =====
-// Set NEXT_PUBLIC_API_URL in .env.local to override (e.g. for production).
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
+const API_URL = `${ORIGIN}/api`;
+
+function resolveImage(path: string | null | undefined): string {
+    if (!path) return "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400";
+    if (/^https?:\/\//i.test(path)) return path;
+    return `${ORIGIN}/${path.replace(/^\/+/, "")}`;
+}
 
 // ===== TYPES =====
 interface StaffMember {
     id: string | number;
+    slug: string;
     name: string;
     position: string;
     category: string;
@@ -41,10 +50,10 @@ interface StaffMember {
     image: string;
     email?: string;
     phone?: string;
-    linkedin?: boolean;
+    linkedin?: string | null;
 }
 
-// ===== FILTER DEFINITIONS (mirrors staff.html's filter-buttons / sub-filter-buttons) =====
+// ===== FILTER DEFINITIONS =====
 const categoryFilters = [
     { id: "all", label: "All Staff", icon: Users },
     { id: "director", label: "Director", icon: Briefcase },
@@ -102,29 +111,30 @@ function getBadge(member: StaffMember) {
     };
 }
 
-
+// FIX: backend wraps the list under data.staffs.data (paginated response)
 function normalizeStaffResponse(json: unknown): StaffMember[] {
-    const raw: any[] = Array.isArray(json)
-        ? json
-        : Array.isArray((json as any)?.data)
-        ? (json as any).data
-        : [];
+    const raw: any[] =
+        (json as any)?.data?.staffs?.data ??
+        (json as any)?.data?.staffs ??
+        (json as any)?.data ??
+        [];
 
-    return raw.map((item) => ({
-        id: item.id,
-        name: item.name ?? "",
-        position: item.position ?? "",
-        category: item.category ?? "",
-        subcategory: item.subcategory ?? "all",
-        image:
-            item.image ??
-            item.image_url ??
-            item.photo ??
-            "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400",
-        email: item.email ?? undefined,
-        phone: item.phone ?? undefined,
-        linkedin: Boolean(item.linkedin),
-    }));
+    if (!Array.isArray(raw)) return [];
+
+    return raw
+        .filter((item) => item.is_active !== false)
+        .map((item) => ({
+            id: item.id,
+            slug: item.slug ?? String(item.id),
+            name: item.name ?? "",
+            position: item.position ?? "",
+            category: item.category ?? "",
+            subcategory: item.subcategory ?? "all",
+            image: resolveImage(item.photo),
+            email: item.email ?? undefined,
+            phone: item.phone ?? undefined,
+            linkedin: item.linkedin ?? null,
+        }));
 }
 
 export default function StaffPage() {
@@ -142,7 +152,14 @@ export default function StaffPage() {
             setLoading(true);
             setError(null);
             try {
-                const res = await fetch(`${API_URL}/staff`, {
+                // FIX: endpoint is /staffs, not /staff
+                // FIX: backend defaults to per_page=10 (paginated response).
+                // Since we filter client-side by category/subcategory, we need
+                // ALL active staff in one shot — pass a large per_page so the
+                // paginator doesn't silently cut the list down to 10. The
+                // controller already supports ?per_page=, so no backend
+                // change is required for this fix.
+                const res = await fetch(`${API_URL}/staffs?per_page=1000`, {
                     headers: { Accept: "application/json" },
                 });
                 if (!res.ok) {
@@ -171,8 +188,6 @@ export default function StaffPage() {
         };
     }, []);
 
-    // Selecting a top-level category resets any active sub-filter,
-    // same behaviour as clicking a .filter-btn in staff.js
     function selectCategory(id: string) {
         setActiveCategory(id);
         setActiveSub("all");
@@ -197,8 +212,6 @@ export default function StaffPage() {
     );
     const rest = filtered.filter((m) => m.category !== "director");
 
-    // Sub-filter row only appears for Academics / Non-Academic,
-    // matching #academicFilters / #nonAcademicFilters in staff.html
     const showSubFilters =
         activeCategory === "academics" || activeCategory === "non-academic";
     const subFilterList =
@@ -265,7 +278,7 @@ export default function StaffPage() {
                         })}
                     </div>
 
-                    {/* Sub Filters (Academics / Non-Academic only) */}
+                    {/* Sub Filters */}
                     {showSubFilters && (
                         <div className="flex flex-wrap justify-center gap-2 mb-12">
                             <button
@@ -319,7 +332,7 @@ export default function StaffPage() {
                             <p className="text-[12px] text-[#5a6380] mt-1">
                                 Make sure the Laravel API is running at{" "}
                                 <code className="bg-gray-100 px-1.5 py-0.5 rounded">
-                                    {API_URL}/staff
+                                    {API_URL}/staffs
                                 </code>{" "}
                                 and CORS allows this origin.
                             </p>
@@ -340,7 +353,7 @@ export default function StaffPage() {
                             </div>
                         )}
 
-                    {/* Former Directors (own heading, like #formerDirectorHeading in staff.html) */}
+                    {/* Former Directors */}
                     {!loading && !error && formerDirectors.length > 0 && (
                         <>
                             <div className="flex items-center gap-3 mt-12 mb-6">
@@ -369,58 +382,76 @@ export default function StaffPage() {
     );
 }
 
+// FIX: previously this whole card was wrapped in a <Link> (renders <a>), while
+// the mailto/tel/linkedin icons inside it were also <a> tags. Nested <a> tags
+// are invalid HTML and caused a hydration error. Now the card navigates via
+// router.push on click, and the inner icon links use stopPropagation so they
+// don't trigger card navigation when clicked.
 function StaffCard({ member }: { member: StaffMember }) {
     const badge = getBadge(member);
+    const router = useRouter();
+
     return (
-        <Link href={`/staff/${member.id}`}>
-            <div className="group bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200">
-                <div className="relative h-64 overflow-hidden">
-                    <img
-                        src={member.image}
-                        alt={member.name}
-                        className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0b1730]/85 via-[#0b1730]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-5">
-                        <div className="flex gap-2.5">
-                            {member.email && (
-                                <a
-                                    href={`mailto:${member.email}`}
-                                    className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white hover:bg-[#e85d14] transition-colors"
-                                >
-                                    <Mail size={15} />
-                                </a>
-                            )}
-                            {member.phone && (
-                                <a
-                                    href={`tel:${member.phone}`}
-                                    className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white hover:bg-[#e85d14] transition-colors"
-                                >
-                                    <Phone size={15} />
-                                </a>
-                            )}
-                            {member.linkedin && (
-                                <a
-                                    href="#"
-                                    className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white hover:bg-[#e85d14] transition-colors"
-                                >
-                                    <FaLinkedin size={20} />
-                                </a>
-                            )}
-                        </div>
+        <div
+            onClick={() => router.push(`/staff/${member.slug}`)}
+            role="link"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                if (e.key === "Enter") router.push(`/staff/${member.slug}`);
+            }}
+            className="group bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer"
+        >
+            <div className="relative h-64 overflow-hidden">
+                <img
+                    src={member.image}
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0b1730]/85 via-[#0b1730]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-5">
+                    <div className="flex gap-2.5">
+                        {member.email && (
+                            <a
+                                href={`mailto:${member.email}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white hover:bg-[#e85d14] transition-colors"
+                            >
+                                <Mail size={15} />
+                            </a>
+                        )}
+                        {member.phone && (
+                            <a
+                                href={`tel:${member.phone}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white hover:bg-[#e85d14] transition-colors"
+                            >
+                                <Phone size={15} />
+                            </a>
+                        )}
+                        {member.linkedin && (
+                            <a
+                                href={member.linkedin}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-9 h-9 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center text-white hover:bg-[#e85d14] transition-colors"
+                            >
+                                <FaLinkedin size={20} />
+                            </a>
+                        )}
                     </div>
                 </div>
-                <div className="p-5 text-center">
-                    <h3 className="text-[15px] font-bold text-[#0b1730] mb-1">
-                        {member.name}
-                    </h3>
-                    <p className="text-[13px] text-[#5a6380] mb-3">{member.position}</p>
-                    <span
-                        className={`text-[11px] font-semibold px-3 py-1 rounded-full ${badge.className}`}
-                    >
-                        {badge.label}
-                    </span>
-                </div>
             </div>
-        </Link>
+            <div className="p-5 text-center">
+                <h3 className="text-[15px] font-bold text-[#0b1730] mb-1">
+                    {member.name}
+                </h3>
+                <p className="text-[13px] text-[#5a6380] mb-3">{member.position}</p>
+                <span
+                    className={`text-[11px] font-semibold px-3 py-1 rounded-full ${badge.className}`}
+                >
+                    {badge.label}
+                </span>
+            </div>
+        </div>
     );
 }

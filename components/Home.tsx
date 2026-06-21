@@ -19,11 +19,54 @@ interface CourseCard {
   img: string;
   code: string;
   title: string;
+  href: string;
   fallbackClass: string;
   fallbackIcon: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// .env.local may or may not already include "/api" — normalize it here.
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
+const API_BASE = `${ORIGIN}/api`;
+
+// Turns "storage/news/x.png" into a full absolute URL. Leaves full URLs untouched.
+function resolveImage(path: string | null | undefined): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${ORIGIN}/${path.replace(/^\/+/, "")}`;
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function mapNewsItem(item: any, kind: "news" | "event"): NewsCard {
+  return {
+    img: resolveImage(item.image),
+    tag: item.category ?? (kind === "event" ? "Event" : "News"),
+    tagClass: kind === "event" ? "bg-[#185FA5]" : "bg-[#e85d14]",
+    date: formatDate(item.published_at ?? item.event_date ?? item.date ?? item.created_at),
+    title: item.title,
+    meta: item.read_time ? `${item.read_time} min read` : (item.location ?? ""),
+    href: kind === "event" ? `/events/${item.slug}` : `/news/${item.slug}`,
+    fallbackClass: kind === "event" ? "from-[#185FA5] to-[#0b1730]" : "from-[#e85d14] to-[#0b1730]",
+    fallbackIcon: kind === "event" ? "fa-calendar-alt" : "fa-newspaper",
+  };
+}
+
+function mapCourseItem(item: any): CourseCard {
+  return {
+    img: resolveImage(item.image),
+    code: item.short_code ?? item.code ?? "",
+    title: item.title,
+    href: `/courses/${item.slug}`,
+    fallbackClass: "from-[#3B6D11] to-[#0b1730]",
+    fallbackIcon: "fa-graduation-cap",
+  };
+}
 
 function CardGrid({ cards, altBg = false }: { cards: NewsCard[]; altBg?: boolean }) {
   return (
@@ -47,15 +90,19 @@ function CardGrid({ cards, altBg = false }: { cards: NewsCard[]; altBg?: boolean
             <span className={`absolute top-3.5 left-3.5 ${card.tagClass} text-white text-[10px] font-bold uppercase tracking-[0.06em] px-2.5 py-1 rounded-full`}>
               {card.tag}
             </span>
-            <div className="absolute bottom-3.5 right-3.5 bg-[rgba(11,23,48,0.75)] backdrop-blur-sm text-white/85 text-[11px] font-medium px-2.5 py-1 rounded flex items-center gap-1">
-              <i className="fas fa-calendar text-[10px] text-[#e85d14]"></i> {card.date}
-            </div>
+            {card.date && (
+              <div className="absolute bottom-3.5 right-3.5 bg-[rgba(11,23,48,0.75)] backdrop-blur-sm text-white/85 text-[11px] font-medium px-2.5 py-1 rounded flex items-center gap-1">
+                <i className="fas fa-calendar text-[10px] text-[#e85d14]"></i> {card.date}
+              </div>
+            )}
           </div>
           <div className="p-5 flex flex-col gap-2.5 flex-1">
             <div className="text-[14px] font-semibold text-[#0f1729] leading-[1.55]">{card.title}</div>
-            <div className="text-[12px] text-gray-400 flex items-center gap-1 mt-auto">
-              <i className="fas fa-tag text-[11px] text-[#e85d14]"></i> {card.meta}
-            </div>
+            {card.meta && (
+              <div className="text-[12px] text-gray-400 flex items-center gap-1 mt-auto">
+                <i className="fas fa-tag text-[11px] text-[#e85d14]"></i> {card.meta}
+              </div>
+            )}
           </div>
         </Link>
       ))}
@@ -112,21 +159,36 @@ export default function HomeSections() {
   const [loadingCourses, setLoadingCourses] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/news`)
+    // /api/news -> { data: { allNews: { data: [...] } } }
+    fetch(`${API_BASE}/news`)
       .then((r) => r.json())
-      .then((data) => setNews(Array.isArray(data) ? data : data.data ?? []))
+      .then((payload) => {
+        const items = payload?.data?.allNews?.data ?? [];
+        setNews(items.slice(0, 3).map((item: any) => mapNewsItem(item, "news")));
+      })
       .catch(() => setNews([]))
       .finally(() => setLoadingNews(false));
 
-    fetch(`${API_BASE}/api/events`)
+    // /api/events -> { data: { events: { data: [...] } } }
+    fetch(`${API_BASE}/events`)
       .then((r) => r.json())
-      .then((data) => setEvents(Array.isArray(data) ? data : data.data ?? []))
+      .then((payload) => {
+        const items = payload?.data?.events?.data ?? [];
+        setEvents(items.slice(0, 3).map((item: any) => mapNewsItem(item, "event")));
+      })
       .catch(() => setEvents([]))
       .finally(() => setLoadingEvents(false));
 
-    fetch(`${API_BASE}/api/courses`)
+    // /api/courses -> { data: { courses: [...] } }  (NOT paginated, plain array)
+    fetch(`${API_BASE}/courses`)
       .then((r) => r.json())
-      .then((data) => setCourses(Array.isArray(data) ? data : data.data ?? []))
+      .then((payload) => {
+        const items = payload?.data?.courses ?? [];
+        // Home page shows only the main HND programmes (is_main: true).
+        // Foundation/general courses (General English, General ICT, etc.) are excluded here.
+        const mainOnly = items.filter((item: any) => !!item.is_main);
+        setCourses(mainOnly.slice(0, 6).map(mapCourseItem));
+      })
       .catch(() => setCourses([]))
       .finally(() => setLoadingCourses(false));
   }, []);
@@ -197,7 +259,7 @@ export default function HomeSections() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[22px]">
               {courses.map((course) => (
-                <div key={course.code} className="flex flex-col bg-white rounded-2xl overflow-hidden border border-[#97938f] transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg cursor-pointer">
+                <div key={course.code || course.title} className="flex flex-col bg-white rounded-2xl overflow-hidden border border-[#97938f] transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg cursor-pointer">
                   <div className="h-[150px] relative overflow-hidden">
                     <img
                       src={course.img}
@@ -215,7 +277,7 @@ export default function HomeSections() {
                   <div className="p-5 flex flex-col gap-2 flex-1">
                     <div className="text-[11px] font-bold text-[#e85d14] uppercase tracking-[0.10em]">{course.code}</div>
                     <div className="text-[13.5px] font-semibold text-[#0f1729] leading-[1.5]">{course.title}</div>
-                    <Link href="/courses/details" className="inline-flex items-center gap-1.5 text-[#e85d14] text-[12px] font-semibold mt-auto pt-2 hover:gap-2.5 transition-all duration-200">
+                    <Link href={course.href} className="inline-flex items-center gap-1.5 text-[#e85d14] text-[12px] font-semibold mt-auto pt-2 hover:gap-2.5 transition-all duration-200">
                       Learn More <i className="fas fa-arrow-right text-[10px]"></i>
                     </Link>
                   </div>

@@ -1,9 +1,30 @@
 import Link from "next/link";
 
-export default function ResearchPage() {
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+async function getStats() {
+  try {
+    const [proj, pub] = await Promise.all([
+      fetch(`${API_BASE}/api/research?type=project`, { next: { revalidate: 3600 } }),
+      fetch(`${API_BASE}/api/research?type=publication`, { next: { revalidate: 3600 } }),
+    ]);
+    const pj = await proj.json();
+    const pb = await pub.json();
+    return {
+      projects: pj.researches?.total ?? 0,
+      publications: pb.researches?.total ?? 0,
+    };
+  } catch {
+    return { projects: 0, publications: 0 };
+  }
+}
+
+export default async function ResearchPage() {
+  const stats = await getStats();
+
   return (
     <>
-      {/* ===== HERO BANNER ===== */}
+      {/* HERO */}
       <div
         className="relative text-center py-20 px-6 overflow-hidden"
         style={{ background: "linear-gradient(135deg, #0f2a5e 0%, #1a4a8a 60%, #2563b0 100%)" }}
@@ -11,7 +32,7 @@ export default function ResearchPage() {
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C%2Fg%3E%3C%2Fsvg%3E")`,
           }}
         />
         <div className="relative z-10">
@@ -33,12 +54,12 @@ export default function ResearchPage() {
         </div>
       </div>
 
-      {/* ===== STATS STRIP ===== */}
+      {/* STATS STRIP */}
       <div className="bg-[#0f2a5e] py-10 px-6">
         <div className="max-w-[1100px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { num: "50+", label: "Research Projects" },
-            { num: "120+", label: "Publications" },
+            { num: `${stats.projects}+`, label: "Research Projects" },
+            { num: `${stats.publications}+`, label: "Publications" },
             { num: "30+", label: "Innovation Projects" },
             { num: "15+", label: "Industry Collaborations" },
           ].map((s) => (
@@ -51,13 +72,11 @@ export default function ResearchPage() {
       </div>
 
       <main className="max-w-[1200px] mx-auto px-6 py-16">
-
-        {/* ===== DISCIPLINES ===== */}
+        {/* DISCIPLINES - static, no API needed */}
         <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-2 text-center">Focus Areas</div>
         <h2 className="font-bold text-[#0f2a5e] mb-10 text-center" style={{ fontSize: "clamp(22px,3vw,30px)" }}>
           Key Research <span className="text-[#2563b0]">Disciplines</span>
         </h2>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
           {[
             { icon: "fa-laptop-code", title: "ICT", desc: "Software engineering, AI, cybersecurity, data science." },
@@ -80,12 +99,11 @@ export default function ResearchPage() {
           ))}
         </div>
 
-        {/* ===== HIGHLIGHTS ===== */}
+        {/* HIGHLIGHTS */}
         <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-2 text-center">Explore Further</div>
         <h2 className="font-bold text-[#0f2a5e] mb-10 text-center" style={{ fontSize: "clamp(22px,3vw,30px)" }}>
           Research <span className="text-[#2563b0]">Highlights</span>
         </h2>
-
         <div className="grid sm:grid-cols-2 gap-6">
           <Link
             href="/research/innovation-projects"
@@ -99,11 +117,9 @@ export default function ResearchPage() {
               Student and faculty innovation projects solving real-world problems.
             </p>
             <span className="text-[#2563b0] font-medium text-[13px] flex items-center gap-1.5 mt-2">
-              Explore projects
-              <i className="fas fa-arrow-right text-[11px] group-hover:translate-x-1 transition-transform"></i>
+              Explore projects <i className="fas fa-arrow-right text-[11px] group-hover:translate-x-1 transition-transform"></i>
             </span>
           </Link>
-
           <Link
             href="/research/publications"
             className="group bg-white rounded-2xl border border-[#e5eaf3] p-7 flex flex-col gap-3 hover:shadow-[0_10px_30px_rgba(37,99,176,0.13)] hover:-translate-y-0.5 transition-all duration-200 no-underline text-inherit"
@@ -116,8 +132,7 @@ export default function ResearchPage() {
               Journals, conference papers and research outputs from UCJ.
             </p>
             <span className="text-[#2563b0] font-medium text-[13px] flex items-center gap-1.5 mt-2">
-              View publications
-              <i className="fas fa-arrow-right text-[11px] group-hover:translate-x-1 transition-transform"></i>
+              View publications <i className="fas fa-arrow-right text-[11px] group-hover:translate-x-1 transition-transform"></i>
             </span>
           </Link>
         </div>

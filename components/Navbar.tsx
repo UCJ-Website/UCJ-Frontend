@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -28,8 +27,8 @@ export default function Navbar() {
         { icon: "fa-industry", label: "Production Technology", href: "/departments/production" },
         { icon: "fa-flask", label: "Food Technology", href: "/departments/food-technology" },
         { icon: "fa-concierge-bell", label: "Hospitality Management", href: "/departments/hospitality" },
-        { icon: "fa-handshake", label: "Career Guidance Unit", href: "/centres/social-reconciliation" },
-        { icon: "fa-users", label: "Staff Development Unit", href: "/centres/staff-development" },
+        { icon: "fa-handshake", label: "Career Guidance Unit", href: "/management/social-reconciliation" },
+        { icon: "fa-users", label: "Staff Development Unit", href: "/management/staff-development" },
       ]
     },
     {
@@ -40,23 +39,23 @@ export default function Navbar() {
     },
     {
       key: "admin", label: "Administration", items: [
-        { icon: "fa-building", label: "Director Office", href: "/administration" },
-        { icon: "fa-briefcase", label: "Admin Office", href: "/administration" },
-        { icon: "fa-hand-holding-usd", label: "Finance and Accounts", href: "/administration" },
-        { icon: "fa-user-plus", label: "Admissions", href: "/administration" },
-        { icon: "fa-clipboard-list", label: "Examination", href: "/examination" },
+        { icon: "fa-building", label: "Director Office", href: "/management" },
+        { icon: "fa-briefcase", label: "Admin Office", href: "/management" },
+        { icon: "fa-hand-holding-usd", label: "Finance and Accounts", href: "/management" },
+        { icon: "fa-user-plus", label: "Admissions", href: "/student-services" },
+        { icon: "fa-clipboard-list", label: "Examination", href: "/student-services" },
       ]
     },
     {
       key: "research", label: "Research", items: [
-        { icon: "fa-lightbulb", label: "Innovation Projects", href: "/innovation-projects" },
-        { icon: "fa-book", label: "Publications", href: "/publications" },
+        { icon: "fa-lightbulb", label: "Innovation Projects", href: "/research/innovation-projects" },
+        { icon: "fa-book", label: "Publications", href: "/research/publications" },
       ]
     },
     {
       key: "student", label: "Student", items: [
-        { icon: "fa-heart", label: "Student Life", href: "/studentlife" },
-        { icon: "fa-file-alt", label: "Student Form", href: "/studentform" },
+        { icon: "fa-heart", label: "Student Life", href: "/student/studentlife" },
+        { icon: "fa-file-alt", label: "Student Form", href: "/student/studentform" },
       ]
     },
   ];
@@ -114,11 +113,11 @@ export default function Navbar() {
                       <i className="fas fa-cogs" /> Engineering
                     </div>
                     {[
-                      { icon: "fa-tools", label: "Building Services Technology", href: "/departments/building-services" },
-                      { icon: "fa-hard-hat", label: "Construction Technology", href: "/departments/construction" },
-                      { icon: "fa-robot", label: "Mechatronics Technology", href: "/departments/mechatronics" },
-                      { icon: "fa-tractor", label: "Farm Machinery", href: "/departments/farm-machinery" },
-                      { icon: "fa-industry", label: "Production Technology", href: "/departments/production" },
+                      { icon: "fa-tools", label: "Building Services Technology", href: "/academic/departments/department-of-building-services-technology" },
+                      { icon: "fa-hard-hat", label: "Construction Technology", href: "/academic/departments/department-of-construction-technology" },
+                      { icon: "fa-robot", label: "Mechatronics Technology", href: "/academic/departments/department-of-mechatronics-technology" },
+                      { icon: "fa-tractor", label: "Farm Machinery", href: "/academic/departments/department-of-farm-machinery" },
+                      { icon: "fa-industry", label: "Production Technology", href: "/academic/departments/department-of-production-technology" },
                     ].map(item => (
                       <Link key={item.label} href={item.href} className={di}>
                         <i className={`fas ${item.icon} text-gray-400 w-[18px] text-center`} /> {item.label}
@@ -129,9 +128,9 @@ export default function Navbar() {
                       <i className="fas fa-graduation-cap" /> Non-Engineering
                     </div>
                     {[
-                      { icon: "fa-flask", label: "Food Technology", href: "/departments/food-technology" },
-                      { icon: "fa-concierge-bell", label: "Hospitality Management", href: "/departments/hospitality" },
-                      { icon: "fa-compass", label: "Interdisciplinary", href: "/departments/interdisciplinary" },
+                      { icon: "fa-flask", label: "Food Technology", href: "/academic/departments/department-of-food-technology" },
+                      { icon: "fa-concierge-bell", label: "Hospitality Management", href: "/academic/departments/department-of-hospitality-management" },
+                      { icon: "fa-compass", label: "Interdisciplinary", href: "/academic/departments/department-of-interdisciplinary" },
                     ].map(item => (
                       <Link key={item.label} href={item.href} className={di}>
                         <i className={`fas ${item.icon} text-gray-400 w-[18px] text-center`} /> {item.label}
@@ -143,8 +142,8 @@ export default function Navbar() {
                       <i className="fas fa-school text-[#e85d14]" /> Units
                     </div>
                     {[
-                      { icon: "fa-handshake", label: "Career Guidance Unit", href: "/centres/social-reconciliation" },
-                      { icon: "fa-users", label: "Staff Development Unit", href: "/centres/staff-development" },
+                      { icon: "fa-handshake", label: "Career Guidance Unit", href: "/academic/units/career-guidance" },
+                      { icon: "fa-users", label: "Staff Development Unit", href: "/academic/units/staff-development" },
                     ].map(item => (
                       <Link key={item.label} href={item.href} className={di}>
                         <i className={`fas ${item.icon} text-gray-400 w-[18px] text-center`} /> {item.label}
@@ -174,9 +173,9 @@ export default function Navbar() {
                       <i className="fas fa-user-tie text-[#e85d14]" /> Management
                     </div>
                     {[
-                      { icon: "fa-building", label: "Director Office", href: "/administration" },
-                      { icon: "fa-briefcase", label: "Admin Office", href: "/administration" },
-                      { icon: "fa-hand-holding-usd", label: "Finance and Accounts", href: "/administration" },
+                      { icon: "fa-building", label: "Director Office", href: "/administration/director-office" },
+                      { icon: "fa-briefcase", label: "Admin Office", href: "/administration/admin-office" },
+                      { icon: "fa-hand-holding-usd", label: "Finance and Accounts", href: "/administration/finance-accounts" },
                     ].map(item => (
                       <Link key={item.label} href={item.href} className={di}>
                         <i className={`fas ${item.icon} text-gray-400 w-[18px] text-center`} /> {item.label}
@@ -188,8 +187,8 @@ export default function Navbar() {
                       <i className="fas fa-user-graduate text-[#e85d14]" /> Student Services
                     </div>
                     {[
-                      { icon: "fa-user-plus", label: "Admissions", href: "/administration" },
-                      { icon: "fa-clipboard-list", label: "Examination", href: "/examination" },
+                      { icon: "fa-user-plus", label: "Admissions", href: "/student-services/admissions" },
+                      { icon: "fa-clipboard-list", label: "Examination", href: "/student-services/examinations" },
                     ].map(item => (
                       <Link key={item.label} href={item.href} className={di}>
                         <i className={`fas ${item.icon} text-gray-400 w-[18px] text-center`} /> {item.label}
@@ -213,10 +212,10 @@ export default function Navbar() {
 
             {/* Student */}
             <div className="nav-group">
-              <Link href="/student" className="nav-plain">Student <i className="fas fa-chevron-down text-[10px]" /></Link>
+              <Link href="/student-form" className="nav-plain">Student <i className="fas fa-chevron-down text-[10px]" /></Link>
               <div className="dropdown-panel">
-                <Link href="/student/studentlife" className={di}><i className="fas fa-heart text-gray-400 w-[18px] text-center" /> Student Life</Link>
-                <Link href="/student" className={di}><i className="fas fa-file-alt text-gray-400 w-[18px] text-center" /> Student Form</Link>
+                <Link href="/student-life" className={di}><i className="fas fa-heart text-gray-400 w-[18px] text-center" /> Student Life</Link>
+                <Link href="/student-form" className={di}><i className="fas fa-file-alt text-gray-400 w-[18px] text-center" /> Student Form</Link>
               </div>
             </div>
 

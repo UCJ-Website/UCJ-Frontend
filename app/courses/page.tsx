@@ -1,6 +1,15 @@
 import Link from "next/link";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// .env.local may or may not already include "/api" — normalize it here.
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
+const API_BASE = `${ORIGIN}/api`;
+
+function resolveImage(path: string | null | undefined): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${ORIGIN}/${path.replace(/^\/+/, "")}`;
+}
 
 interface Course {
   img: string;
@@ -10,12 +19,27 @@ interface Course {
   href: string;
 }
 
+// Converts a raw backend course record into the shape this page expects
+function mapCourseItem(item: any): Course {
+  return {
+    img: resolveImage(item.image),
+    tag: "fa-graduation-cap",
+    tagLabel: item.short_code ?? item.level ?? "",
+    name: item.title,
+    href: `/courses/${item.slug}`,
+  };
+}
+
 async function getCourses(): Promise<Course[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/courses`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API_BASE}/courses`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : data.data ?? [];
+    const payload = await res.json();
+    // /api/courses -> { data: { courses: [...] } }  (NOT paginated, plain array)
+    const items = payload?.data?.courses ?? [];
+    // This page only shows main HND programmes; foundation/general ones live on /courses/general
+    const mainOnly = items.filter((item: any) => !!item.is_main);
+    return mainOnly.map(mapCourseItem);
   } catch {
     return [];
   }

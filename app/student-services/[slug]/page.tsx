@@ -1,94 +1,87 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-const management: Record<string, {
+const services: Record<string, {
   icon: string;
   title: string;
   subtitle: string;
   info: { label: string; value: string }[];
   description: string;
+  processTitle: string;
+  steps: { num: number; title: string; desc: string }[];
   responsibilities: string[];
   external_url: string;
   external_label: string;
 }> = {
-  "director-office": {
-    icon: "fa-landmark",
-    title: "Director Office",
-    subtitle: "University of Jaffna — Strategic Leadership",
+  "admissions": {
+    icon: "fa-door-open",
+    title: "Admissions",
+    subtitle: "University College of Jaffna — Student Intake & Enrolment",
     info: [
-      { label: "Department", value: "Director's Office" },
+      { label: "Office", value: "Admissions Unit, UCJ" },
       { label: "Location", value: "No 29 Brown Road, Kokuvil East, Jaffna" },
       { label: "Office Hours", value: "Mon – Fri, 8:30 AM – 4:00 PM" },
       { label: "Contact", value: "+94 0212 217791" },
     ],
     description:
-      "The Director's Office serves as the apex of academic and administrative leadership at University College of Jaffna. Operating under the University of Jaffna, the Director oversees all institutional functions — ensuring that academic programmes meet national standards, that faculty and staff are supported, and that the institution's strategic vision is effectively carried out across all departments.",
-    responsibilities: [
-      "Academic and institutional governance",
-      "Strategic planning and development",
-      "Faculty oversight and performance",
-      "Policy implementation and compliance",
-      "Liaison with University of Jaffna",
-      "Community and stakeholder engagement",
+      "The Admissions unit at University College of Jaffna manages the full student intake process — from receiving applications and verifying eligibility to registering successful candidates and coordinating orientation.",
+    processTitle: "Admission Process",
+    steps: [
+      { num: 1, title: "Apply Online / In-Person", desc: "Submit your application form with required documents" },
+      { num: 2, title: "Document Verification", desc: "Academic certificates and ID documents are reviewed" },
+      { num: 3, title: "Selection & Offer", desc: "Eligible candidates receive an admission offer letter" },
+      { num: 4, title: "Enrolment & Orientation", desc: "Complete registration and attend the induction programme" },
     ],
-    external_url: "https://www.jfn.ac.lk/unit/office-of-the-vice-chancellor/",
-    external_label: "Visit University of Jaffna",
+    responsibilities: [
+      "Application processing and review",
+      "Eligibility and document verification",
+      "Student registration and ID issuance",
+      "Intake coordination with departments",
+      "Orientation programme management",
+      "Scholarship and bursary guidance",
+    ],
+    external_url: "https://www.jfn.ac.lk/index.php/unit/admissions/",
+    external_label: "Visit UoJ Admissions",
   },
-  "admin-office": {
-    icon: "fa-pen-nib",
-    title: "Admin Office",
-    subtitle: "University of Jaffna — Administrative Operations",
+  "examinations": {
+    icon: "fa-clipboard-list",
+    title: "Examinations",
+    subtitle: "University College of Jaffna — Academic Assessment & Results",
     info: [
-      { label: "Department", value: "Administrative Office" },
+      { label: "Office", value: "Examinations Unit, UCJ" },
       { label: "Location", value: "No 29 Brown Road, Kokuvil East, Jaffna" },
       { label: "Office Hours", value: "Mon – Fri, 8:30 AM – 4:00 PM" },
       { label: "Email", value: "info@ucj.ac.lk" },
     ],
     description:
-      "The Administrative Office manages the day-to-day operational backbone of University College of Jaffna. From maintaining official academic records and handling student admissions to managing documentation and institutional correspondence, the Admin Office ensures that all administrative processes run smoothly and in compliance with University of Jaffna regulations.",
+      "The Examinations unit at UCJ oversees the planning, scheduling, and conduct of all academic assessments. From semester exams and practical evaluations to supplementary sittings and result publications, this unit ensures fair and transparent conduct.",
+    processTitle: "Examination Process",
+    steps: [
+      { num: 1, title: "Registration", desc: "Students register for exams within the given deadline" },
+      { num: 2, title: "Hall Ticket Issued", desc: "Admit cards issued after fees and registration confirmed" },
+      { num: 3, title: "Examination Held", desc: "Written and practical exams conducted as scheduled" },
+      { num: 4, title: "Results Published", desc: "Results released and certificates issued after verification" },
+    ],
     responsibilities: [
-      "Academic records management",
-      "Student admissions coordination",
-      "Official correspondence handling",
-      "Examination administration support",
-      "Staff HR coordination",
-      "Institutional documentation",
+      "Exam timetable planning and publishing",
+      "Hall ticket and admit card issuance",
+      "Invigilation and exam hall management",
+      "Answer script handling and marking",
+      "Results processing and publication",
+      "Supplementary exam coordination",
     ],
-    external_url: "http://www.jfn.ac.lk/index.php/unit/office-of-the-registrar/",
-    external_label: "Visit Registrar's Office",
-  },
-  "finance-accounts": {
-    icon: "fa-coins",
-    title: "Finance and Accounts",
-    subtitle: "University of Jaffna — Financial Management",
-    info: [
-      { label: "Department", value: "Finance & Accounts" },
-      { label: "Location", value: "No 29 Brown Road, Kokuvil East, Jaffna" },
-      { label: "Office Hours", value: "Mon – Fri, 8:30 AM – 4:00 PM" },
-      { label: "Contact", value: "+94 0212 217791" },
-    ],
-    description:
-      "The Finance and Accounts division is responsible for all financial operations at University College of Jaffna. This includes budget planning, expenditure monitoring, fee collection, payroll, and financial reporting — all conducted in accordance with the financial regulations of the University of Jaffna and the Government of Sri Lanka.",
-    responsibilities: [
-      "Budget planning and allocation",
-      "Student fee collection and records",
-      "Payroll and staff remuneration",
-      "Financial reporting and audits",
-      "Procurement and asset management",
-      "Grant and fund management",
-    ],
-    external_url: "https://jfn.ac.lk/office-of-the-bursar/",
-    external_label: "Visit Bursar's Office",
+    external_url: "https://www.jfn.ac.lk/index.php/unit/general-administration/",
+    external_label: "Visit UoJ Examinations",
   },
 };
 
-export default async function AdminSlugPage({
+export default async function StudentServiceSlugPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const item = management[slug];
+  const item = services[slug];
   if (!item) notFound();
 
   return (
@@ -99,13 +92,13 @@ export default async function AdminSlugPage({
           className="absolute inset-0 opacity-10"
           style={{
             backgroundImage:
-              "radial-gradient(ellipse at 70% 50%, rgba(232,93,20,0.15) 0%, transparent 60%)",
+              "radial-gradient(ellipse at 30% 50%, rgba(232,93,20,0.15) 0%, transparent 60%)",
           }}
         />
         <div className="relative z-10 max-w-3xl mx-auto">
           <div className="flex items-center justify-center gap-2 text-[#e85d14] text-sm font-semibold uppercase tracking-widest mb-4">
             <i className={`fas ${item.icon}`} />
-            <span>UCJ Administration</span>
+            <span>Student Services</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             <span className="text-[#e85d14]">{item.title}</span>
@@ -117,6 +110,8 @@ export default async function AdminSlugPage({
             <Link href="/" className="text-[#ff7a35] hover:text-white transition-colors">Home</Link>
             <i className="fas fa-chevron-right text-xs" />
             <Link href="/administration" className="text-[#ff7a35] hover:text-white transition-colors">Administration</Link>
+            <i className="fas fa-chevron-right text-xs" />
+            <Link href="/student-services" className="text-[#ff7a35] hover:text-white transition-colors">Student Services</Link>
             <i className="fas fa-chevron-right text-xs" />
             <span className="text-white/80">{item.title}</span>
           </div>
@@ -151,6 +146,24 @@ export default async function AdminSlugPage({
             {/* Description */}
             <p className="text-gray-500 leading-relaxed text-sm mb-8">{item.description}</p>
 
+            {/* Process Steps */}
+            <div className="mb-8">
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#0f2a5e] mb-5">
+                <i className="fas fa-route text-[#e85d14] mr-2" />{item.processTitle}
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {item.steps.map((step) => (
+                  <div key={step.num} className="bg-gray-50 rounded-xl p-5 text-center">
+                    <div className="w-9 h-9 rounded-full bg-[#e85d14] text-white text-sm font-bold flex items-center justify-center mx-auto mb-3">
+                      {step.num}
+                    </div>
+                    <h5 className="font-semibold text-[#0f2a5e] text-sm mb-1.5">{step.title}</h5>
+                    <p className="text-gray-400 text-xs leading-relaxed">{step.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Responsibilities */}
             <div className="mb-8">
               <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#0f2a5e] mb-4">
@@ -167,7 +180,7 @@ export default async function AdminSlugPage({
 
             {/* Actions */}
             <div className="flex flex-wrap gap-3">
-             <a 
+              <a
                 href={item.external_url}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -176,10 +189,10 @@ export default async function AdminSlugPage({
                 <i className="fas fa-external-link-alt" /> {item.external_label}
               </a>
               <Link
-                href="/administration"
+                href="/student-services"
                 className="inline-flex items-center gap-2 border border-[#0f2a5e]/30 hover:border-[#0f2a5e] text-[#0f2a5e] px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
               >
-                <i className="fas fa-arrow-left" /> Back to Administration
+                <i className="fas fa-arrow-left" /> Back to Student Services
               </Link>
             </div>
           </div>
@@ -191,7 +204,7 @@ export default async function AdminSlugPage({
             <div className="text-[#e85d14] text-xs font-semibold uppercase tracking-widest mb-2">
               <i className="fas fa-envelope mr-1" /> Get in Touch
             </div>
-            <h3 className="text-2xl font-bold mb-2">Need Administrative<br />Assistance?</h3>
+            <h3 className="text-2xl font-bold mb-2">Have Questions?</h3>
             <p className="text-white/60 text-sm">Mon – Fri, 8:30 AM – 4:00 PM.</p>
           </div>
           <div className="flex flex-wrap gap-3 justify-center">

@@ -1,9 +1,15 @@
 import Link from "next/link";
+import CourseImage from "./CourseImage";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// .env.local may or may not already include "/api" — normalize it here.
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
+const API_BASE = `${ORIGIN}/api`;
 
-interface CourseFeature {
-  text: string;
+function resolveImage(path: string | null | undefined): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${ORIGIN}/${path.replace(/^\/+/, "")}`;
 }
 
 interface GeneralCourse {
@@ -12,7 +18,7 @@ interface GeneralCourse {
   tag: { icon: string; label: string };
   name: string;
   desc: string;
-  features: string[] | CourseFeature[];
+  features: string[];
 }
 
 interface PageData {
@@ -20,24 +26,45 @@ interface PageData {
   courses: GeneralCourse[];
 }
 
+// Converts a raw backend course record (is_main = 0/false) into the GeneralCourse shape
+function mapGeneralCourse(item: any): GeneralCourse {
+  const features: string[] = Array.isArray(item.qualifications)
+    ? item.qualifications.map((q: any) => `${q.title}: ${q.description}`)
+    : [];
+
+  return {
+    img: resolveImage(item.image),
+    imgFallback: "fa-desktop",
+    tag: { icon: "fa-graduation-cap", label: item.level ?? item.short_code ?? "Foundation" },
+    name: item.title,
+    desc: item.description ?? "",
+    features,
+  };
+}
+
 async function getPageData(): Promise<PageData> {
+  const fallbackStats = [
+    { num: "2", label: "Programmes" },
+    { num: "100%", label: "Free / Funded" },
+    { num: "All", label: "Levels Welcome" },
+    { num: "UCJ", label: "Certified" },
+  ];
+
   try {
-    const res = await fetch(`${API_BASE}/api/courses/general`, {
-      next: { revalidate: 3600 },
-    });
+    const res = await fetch(`${API_BASE}/courses`, { cache: "no-store" });
     if (!res.ok) throw new Error("fetch failed");
-    const data = await res.json();
-    return data.data ?? data;
-  } catch {
+    const payload = await res.json();
+    const items = payload?.data?.courses ?? [];
+    const generalOnly = items.filter(
+      (item: any) => !item.is_main && item.is_active
+    );
+
     return {
-      stats: [
-        { num: "2", label: "Programmes" },
-        { num: "100%", label: "Free / Funded" },
-        { num: "All", label: "Levels Welcome" },
-        { num: "UCJ", label: "Certified" },
-      ],
-      courses: [],
+      stats: fallbackStats,
+      courses: generalOnly.map(mapGeneralCourse),
     };
+  } catch {
+    return { stats: fallbackStats, courses: [] };
   }
 }
 
@@ -85,18 +112,7 @@ export default async function GeneralCoursePage() {
         </div>
       </div>
 
-      {/* ===== STATS BAR ===== */}
-      <div className="bg-[#0f2a5e] py-6 px-5">
-        <div className="max-w-[1280px] mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6">
-          {stats.map((s) => (
-            <div key={s.label} className="text-center">
-              <div className="text-[#e85d14] text-[28px] font-extrabold leading-none">{s.num}</div>
-              <div className="text-white/70 text-[12px] mt-1">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
+      
       {/* ===== COURSES GRID ===== */}
       <section className="py-16 px-5 bg-[#f8f9fc]">
         <div className="max-w-[1280px] mx-auto">
@@ -109,53 +125,36 @@ export default async function GeneralCoursePage() {
             <p className="text-gray-400 text-sm text-center py-16">No courses available.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-[900px] mx-auto">
-              {courses.map((course) => {
-                const features = course.features.map((f) =>
-                  typeof f === "string" ? f : f.text
-                );
-                return (
-                  <div
-                    key={course.name}
-                    className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col"
-                  >
-                    <div
-                      className="relative h-48 flex items-center justify-center overflow-hidden"
-                      style={{ background: "#e8edf5" }}
-                    >
-                      <i className={`fas ${course.imgFallback} text-[64px] text-[#0f2a5e]/20`}></i>
-                      <img
-                        src={course.img}
-                        alt={course.name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-6 flex flex-col gap-3 flex-1">
-                      <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#e85d14] bg-[#e85d14]/10 border border-[#e85d14]/20 px-3 py-1 rounded-full w-fit">
-                        <i className={`fas ${course.tag.icon} text-[10px]`}></i>
-                        {course.tag.label}
-                      </span>
-                      <h3 className="text-[19px] font-bold text-[#0b1730]">{course.name}</h3>
-                      <p className="text-[14px] text-[#5a6380] leading-[1.75]">{course.desc}</p>
+              {courses.map((course) => (
+                <div
+                  key={course.name}
+                  className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col"
+                >
+                  <CourseImage
+                    src={course.img}
+                    alt={course.name}
+                    fallbackIcon={course.imgFallback}
+                  />
+                  <div className="p-6 flex flex-col gap-3 flex-1">
+                    <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#e85d14] bg-[#e85d14]/10 border border-[#e85d14]/20 px-3 py-1 rounded-full w-fit">
+                      <i className={`fas ${course.tag.icon} text-[10px]`}></i>
+                      {course.tag.label}
+                    </span>
+                    <h3 className="text-[19px] font-bold text-[#0b1730]">{course.name}</h3>
+                    <p className="text-[14px] text-[#5a6380] leading-[1.75]">{course.desc}</p>
+                    {course.features.length > 0 && (
                       <ul className="flex flex-col gap-2 mt-1">
-                        {features.map((f) => (
+                        {course.features.map((f) => (
                           <li key={f} className="flex items-center gap-2 text-[13px] text-[#3d4a6a]">
                             <i className="fas fa-check-circle text-[#e85d14] text-[12px] flex-shrink-0"></i>
                             {f}
                           </li>
                         ))}
                       </ul>
-                      <div className="mt-auto pt-4">
-                        <a
-                          href="/courses/general/ict" // Placeholder link - replace with actual course URL
-                          className="inline-flex items-center gap-2 text-[13px] font-semibold text-white bg-[#e85d14] hover:bg-[#cf4f0f] px-5 py-2.5 rounded-xl transition-colors"
-                        >
-                          Learn More <i className="fas fa-arrow-right text-[11px]"></i>
-                        </a>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
 

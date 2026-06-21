@@ -3,16 +3,51 @@
 import Link from "next/link";
 import { useState } from "react";
 
+// .env.local may or may not already include "/api" — normalize it here.
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
+const API_BASE = `${ORIGIN}/api`;
+
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      (e.target as HTMLFormElement).reset();
-    }, 3000);
+    setError(null);
+    setSubmitting(true);
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const payload = {
+      name: formData.get("name"),
+      email: formData.get("email"),
+      phone: formData.get("phone"),
+      subject: formData.get("subject"),
+      message: formData.get("message"),
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || "Failed to send message");
+      }
+
+      setSubmitted(true);
+      form.reset();
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const inputBase =
@@ -134,7 +169,7 @@ export default function ContactPage() {
               {/* Social row */}
               <div className="flex gap-3">
                 {["fa-facebook-f", "fa-youtube", "fa-envelope"].map((icon) => (
-                  <a
+                  < a
                     key={icon}
                     href="#"
                     className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#1a2f4a] hover:bg-[#e85d14] hover:text-white hover:border-[#e85d14] transition-all duration-200 shadow-sm"
@@ -148,6 +183,13 @@ export default function ContactPage() {
             {/* Form */}
             <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                {error && (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-[13px] font-medium rounded-xl px-4 py-3">
+                    <i className="fas fa-circle-exclamation"></i>
+                    {error}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[13px] font-semibold text-[#0f1c2e]">
@@ -230,16 +272,19 @@ export default function ContactPage() {
 
                 <button
                   type="submit"
-                  className={`flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-white font-semibold text-[14px] transition-all duration-300 shadow-md ${
+                  disabled={submitting}
+                  className={`flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-white font-semibold text-[14px] transition-all duration-300 shadow-md disabled:opacity-60 disabled:cursor-not-allowed ${
                     submitted
                       ? "bg-[#1a8a5a]"
                       : "bg-[#e85d14] hover:bg-[#cf4f0f] hover:-translate-y-0.5 hover:shadow-lg"
                   }`}
                 >
                   <i
-                    className={`fas ${submitted ? "fa-check" : "fa-paper-plane"}`}
+                    className={`fas ${
+                      submitted ? "fa-check" : submitting ? "fa-spinner fa-spin" : "fa-paper-plane"
+                    }`}
                   ></i>
-                  {submitted ? "Message Sent!" : "Send Message"}
+                  {submitted ? "Message Sent!" : submitting ? "Sending..." : "Send Message"}
                 </button>
               </form>
             </div>

@@ -3,7 +3,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// .env.local may or may not already include "/api" — normalize it here.
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
+const API_BASE = `${ORIGIN}/api`;
+
+function resolveImage(path: string | null | undefined): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${ORIGIN}/${path.replace(/^\/+/, "")}`;
+}
 
 interface Event {
   id: number;
@@ -16,6 +25,36 @@ interface Event {
   time: string;
   location: string;
   href?: string;
+}
+
+const MONTHS = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// Converts a raw backend event record into the shape this page expects.
+// Backend fields confirmed: type, venue, event_time, event_date, status.
+function mapEventItem(item: any): Event {
+  const rawDate = item.event_date;
+  const d = rawDate ? new Date(rawDate) : null;
+  const validDate = d && !isNaN(d.getTime()) ? d : null;
+
+  let status: Event["status"] = item.status ?? "upcoming";
+  if (!item.status && validDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    status = validDate < today ? "past" : "upcoming";
+  }
+
+  return {
+    id: item.id,
+    img: resolveImage(item.image),
+    day: validDate ? String(validDate.getDate()) : "--",
+    month: validDate ? MONTHS[validDate.getMonth() + 1] : "--",
+    status,
+    category: (item.type ?? "workshop") as Event["category"],
+    title: item.title,
+    time: item.event_time ?? "",
+    location: item.venue ?? "",
+    href: `/events/${item.slug}`,
+  };
 }
 
 type TabKey = "all" | "workshop" | "competition" | "ceremony" | "exhibition";
@@ -41,8 +80,6 @@ const STATUS_BADGE: Record<string, string> = {
   past: "bg-gray-500 text-white",
 };
 
-const MONTHS = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
 export default function LatestEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,23 +87,27 @@ export default function LatestEventsPage() {
   const [activeMonth, setActiveMonth] = useState<number | "all">("all");
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/events`)
+    // /api/events -> { data: { events: { data: [...] } } }
+    fetch(`${API_BASE}/events`)
       .then((r) => r.json())
-      .then((data) => setEvents(Array.isArray(data) ? data : (data.data ?? [])))
+      .then((payload) => {
+        const items = payload?.data?.events?.data ?? [];
+        setEvents(items.map(mapEventItem));
+      })
       .catch(() => setEvents([]))
       .finally(() => setLoading(false));
   }, []);
 
   const filtered = events.filter((e) => {
     const catMatch = activeTab === "all" || e.category === activeTab;
-    const monthMatch = activeMonth === "all" || parseInt(e.month) === activeMonth;
+    const monthMatch = activeMonth === "all" || MONTHS.indexOf(e.month) === activeMonth;
     return catMatch && monthMatch;
   });
 
   const upcoming = filtered.filter((e) => e.status === "upcoming" || e.status === "ongoing");
   const past = filtered.filter((e) => e.status === "past");
 
-  const monthsWithEvents = new Set(events.map((e) => parseInt(e.month)));
+  const monthsWithEvents = new Set(events.map((e) => MONTHS.indexOf(e.month)));
 
   function SkeletonCard() {
     return (

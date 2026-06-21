@@ -87,9 +87,9 @@ export default function AboutPage() {
             >
               <div className="text-center text-[#6a8aaa]">
                 <img
-                  src="/assets/backgroundimg/a.png"
+                  src="/ucjimg.png"
                   alt="UCJ Logo"
-                  className="w-full max-w-[260px] h-auto object-contain rounded-xl mx-auto"
+                  className="w-full max-w-[500px] h-auto object-contain rounded-xl mx-auto"
                 />
                 <p className="text-[0.85rem] mt-2 opacity-80">
                   University College of Jaffna

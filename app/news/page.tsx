@@ -3,7 +3,23 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// .env.local may or may not already include "/api" — normalize it here.
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
+const API_BASE = `${ORIGIN}/api`;
+
+function resolveImage(path: string | null | undefined): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${ORIGIN}/${path.replace(/^\/+/, "")}`;
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
 
 interface NewsItem {
   id: number;
@@ -17,11 +33,25 @@ interface NewsItem {
   featured?: boolean;
 }
 
-type TabKey = "all" | "publication" | "notice" | "academic" | "general";
+// Converts a raw backend news record into the shape this page expects
+function mapNewsItem(item: any): NewsItem {
+  return {
+    id: item.id,
+    img: resolveImage(item.image),
+    category: (item.category ?? "general") as NewsItem["category"],
+    title: item.title,
+    desc: item.content,
+    date: formatDate(item.published_at ?? item.created_at),
+    read_time: item.read_time ? `${item.read_time} min read` : undefined,
+    href: `/news/${item.slug}`,
+    featured: !!item.is_featured,
+  };
+}
+
+type TabKey = "all" | "notice" | "academic" | "general";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "all", label: "All News" },
-  { key: "publication", label: "Publications" },
   { key: "notice", label: "Notices" },
   { key: "academic", label: "Academic" },
   { key: "general", label: "General" },
@@ -40,9 +70,13 @@ export default function LatestNewsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("all");
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/news`)
+    // /api/news -> { data: { allNews: { data: [...] } } }
+    fetch(`${API_BASE}/news`)
       .then((r) => r.json())
-      .then((data) => setNews(Array.isArray(data) ? data : (data.data ?? [])))
+      .then((payload) => {
+        const items = payload?.data?.allNews?.data ?? [];
+        setNews(items.map(mapNewsItem));
+      })
       .catch(() => setNews([]))
       .finally(() => setLoading(false));
   }, []);

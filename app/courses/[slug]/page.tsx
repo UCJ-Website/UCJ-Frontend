@@ -1,57 +1,120 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import SemestersAccordion from "../../../components/ModulesAccordion";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// .env.local may or may not already include "/api" — normalize it here.
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
+const API_BASE = `${ORIGIN}/api`;
 
-interface CourseStructure {
+function resolveImage(path: string | null | undefined): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${ORIGIN}/${path.replace(/^\/+/, "")}`;
+}
+
+interface Qualification {
+  id: number;
+  course_id: number;
+  title: string;
+  description: string;
+  sort_order: number;
+}
+
+interface CourseLevel {
+  id: number;
+  course_id: number;
+  name: string;
+  duration: string;
+  subtitle: string;
+  sort_order: number;
+}
+
+interface Subject {
+  id: number;
+  course_semester_id: number;
+  name: string;
+  sort_order: number;
+}
+
+interface Module {
+  id: number;
+  course_elective_group_id: number;
+  name: string;
+  sort_order: number;
+}
+
+interface ElectiveGroup {
+  id: number;
+  course_semester_id: number;
+  name: string;
+  sort_order: number;
+  modules: Module[];
+}
+
+export interface Semester {
+  id: number;
+  course_id: number;
+  name: string;
+  sort_order: number;
+  subjects: Subject[];
+  elective_groups: ElectiveGroup[];
+}
+
+interface CourseDetail {
+  id: number;
+  department_id: number | null;
+  title: string;
+  short_code: string;
+  slug: string;
+  description: string;
+  image: string | null;
   level: string;
   duration: string;
+  is_main: boolean;
+  is_active: boolean;
+  sort_order: number;
+  qualifications: Qualification[];
+  levels: CourseLevel[];
+  semesters: Semester[];
 }
 
-interface CourseData {
-  title: string;
-  image: string;
-  intro: string;
-  entryQualifications: string[];
-  courseStructure: CourseStructure[];
-  modules: Record<string, string[] | Record<string, string[]>>;
-}
-
-interface PageProps {
-  params: Promise<{ slug: string }>;
-}
-
-export async function generateMetadata({ params }: PageProps) {
-  const { slug } = await params;
+async function getCourse(slug: string): Promise<CourseDetail | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/courses/${slug}`, { next: { revalidate: 3600 } });
-    if (!res.ok) return { title: "Course Details" };
-    const data = await res.json();
-    const course: CourseData = data.data ?? data;
-    return {
-      title: course.title || "Course Details",
-      description: course.intro || "University College of Jaffna Course",
-    };
+    const res = await fetch(`${API_BASE}/courses/${slug}`, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    const payload = await res.json();
+    // /api/courses/{slug} -> { data: { course: {...} } }
+    return payload?.data?.course ?? null;
   } catch {
-    return { title: "Course Details" };
+    return null;
   }
 }
 
-export default async function CoursePage({ params }: PageProps) {
+function byOrder<T extends { sort_order: number }>(items: T[] | undefined): T[] {
+  if (!items) return [];
+  return [...items].sort((a, b) => a.sort_order - b.sort_order);
+}
+
+export default async function CourseDetailsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const course = await getCourse(slug);
 
-  let course: CourseData | null = null;
-
-  try {
-    const res = await fetch(`${API_BASE}/api/courses/${slug}`, { next: { revalidate: 3600 } });
-    if (!res.ok) notFound();
-    const data = await res.json();
-    course = data.data ?? data;
-  } catch {
+  if (!course) {
     notFound();
   }
 
-  if (!course) notFound();
+  const img = resolveImage(course.image);
+  const qualifications = byOrder(course.qualifications);
+  const levels = byOrder(course.levels);
+  const semesters = byOrder(course.semesters).map((s) => ({
+    ...s,
+    subjects: byOrder(s.subjects),
+    elective_groups: byOrder(s.elective_groups).map((g) => ({
+      ...g,
+      modules: byOrder(g.modules),
+    })),
+  }));
 
   return (
     <>
@@ -62,134 +125,112 @@ export default async function CoursePage({ params }: PageProps) {
           {" / "}
           <Link href="/courses" className="hover:text-[#e85d14] transition-colors">Courses</Link>
           {" / "}
-          <span className="text-[#0b1730] font-medium">{slug.toUpperCase()}</span>
+          <span className="text-[#0b1730] font-medium">{course.title}</span>
         </div>
       </div>
 
       {/* Hero */}
-      <section className="py-16 px-6 bg-gradient-to-r from-[#0b1730] via-[#152244] to-[#1e3060]">
-        <div className="max-w-[1280px] mx-auto">
-          <h1 className="text-[15px] lg:text-[28px] font-extrabold text-white mb-6 leading-tight">{course.title}</h1>
-          <div className="w-24 h-1 bg-[#e85d14] rounded" />
-        </div>
-      </section>
+      <section
+        className="py-16 px-6"
+        style={{ background: "linear-gradient(135deg, #0b1730 0%, #152244 60%, #1e3060 100%)" }}
+      >
+        <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row items-center gap-10">
+          <div className="text-white max-w-[640px]">
+            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/80 text-[12px] font-semibold px-4 py-1.5 rounded-full mb-5">
+              <i className="fas fa-graduation-cap text-[#e85d14]"></i> {course.level}
+            </div>
+            <h1 className="font-extrabold text-white leading-tight mb-4" style={{ fontSize: "clamp(28px,4vw,44px)" }}>
+              {course.title}
+            </h1>
+            <p className="text-white/65 text-[15px] leading-[1.75] mb-6">
+              {course.description}
+            </p>
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-2 text-white/80 text-[13px]">
+                <i className="fas fa-tag text-[#e85d14]"></i> {course.short_code}
+              </div>
+              <div className="flex items-center gap-2 text-white/80 text-[13px]">
+                <i className="fas fa-clock text-[#e85d14]"></i> {course.duration}
+              </div>
+            </div>
+          </div>
 
-      {/* Image */}
-      <section className="px-6">
-        <div className="max-w-[1280px] mx-auto">
-          <img src={course.image} alt={course.title} className="w-full h-[400px] object-cover rounded-lg mt-6" />
-        </div>
-      </section>
-
-      {/* Intro */}
-      <section className="py-16 px-6 bg-white">
-        <div className="max-w-[1280px] mx-auto">
-          <p className="text-[15px] text-[#4a5780] leading-[1.8] max-w-[900px]">{course.intro}</p>
+          {img && (
+            <div className="w-full lg:w-[360px] h-[240px] rounded-2xl overflow-hidden shrink-0 border border-white/15">
+              <img src={img} alt={course.title} className="w-full h-full object-cover" />
+            </div>
+          )}
         </div>
       </section>
 
       {/* Entry Qualifications */}
-      <section className="py-16 px-6 bg-[#f8f9fc]">
-        <div className="max-w-[1280px] mx-auto">
-          <h2 className="text-[32px] font-extrabold text-[#0b1730] mb-8">
-            Entry <span className="text-[#e85d14]">Qualifications</span>
-          </h2>
-          <div className="space-y-4">
-            {course.entryQualifications.map((qual, i) => (
-              <div key={i} className="bg-white p-6 rounded-lg border border-gray-200 hover:border-[#e85d14] transition-colors">
-                <div className="flex items-start gap-4">
-                  <div className="text-[#e85d14] text-[20px] mt-1">✓</div>
-                  <p className="text-[#0b1730] font-semibold text-[14px]">{qual}</p>
+      {qualifications.length > 0 && (
+        <section className="py-14 px-6 bg-[#f8f9fc]">
+          <div className="max-w-[1280px] mx-auto">
+            <div className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#e85d14] mb-2">Requirements</div>
+            <h2 className="font-extrabold text-[#0b1730] mb-8" style={{ fontSize: "clamp(22px,2.8vw,30px)" }}>
+              Entry Qualifications
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {qualifications.map((q) => (
+                <div key={q.id} className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-[#e85d14] font-bold text-[14px]">
+                    <i className="fas fa-check-circle"></i> {q.title}
+                  </div>
+                  <p className="text-[13.5px] text-[#5a6380] leading-[1.7]">{q.description}</p>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Course Structure */}
-      <section className="py-16 px-6 bg-white">
-        <div className="max-w-[1280px] mx-auto">
-          <h2 className="text-[32px] font-extrabold text-[#0b1730] mb-8">
-            Course Structure & <span className="text-[#e85d14]">Course Durations</span>
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-[#f0f2f7]">
-                  <th className="border border-gray-200 px-6 py-4 text-left font-semibold text-[#0b1730]">Level</th>
-                  <th className="border border-gray-200 px-6 py-4 text-left font-semibold text-[#0b1730]">Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {course.courseStructure.map((row, i) => (
-                  <tr key={i} className="hover:bg-[#f8f9fc] border-b border-gray-200">
-                    <td className="border border-gray-200 px-6 py-4 text-[14px] text-[#0b1730] font-medium">{row.level}</td>
-                    <td className="border border-gray-200 px-6 py-4">
-                      <span className="inline-block bg-[#e85d14] text-white px-4 py-1 rounded-full text-[12px] font-semibold">{row.duration}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      {/* Modules */}
-      <section className="py-16 px-6 bg-[#f8f9fc]">
-        <div className="max-w-[1280px] mx-auto">
-          <h2 className="text-[32px] font-extrabold text-[#0b1730] mb-8">
-            Modules <span className="text-[#e85d14]">Details</span>
-          </h2>
-          <div className="space-y-4">
-            {Object.entries(course.modules).map(([semester, modules], idx) => (
-              <details key={idx} className="bg-white border border-gray-200 rounded-lg overflow-hidden group">
-                <summary className="w-full px-6 py-4 text-left font-semibold text-[#0b1730] bg-[#f0f2f7] hover:bg-[#e8eaf5] transition-colors cursor-pointer flex items-center justify-between">
-                  {semester}
-                  <span className="text-[#e85d14] group-open:rotate-180 transition-transform">
-                    <i className="fas fa-chevron-down"></i>
-                  </span>
-                </summary>
-                <div className="px-6 py-6 space-y-4">
-                  {Array.isArray(modules) ? (
-                    <ul className="space-y-3">
-                      {modules.map((mod, i) => (
-                        <li key={i} className="text-[14px] text-[#4a5780] flex items-start gap-3">
-                          <span className="text-[#e85d14] font-bold mt-1">•</span>
-                          <span>{mod}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    Object.entries(modules).map(([group, items]) => (
-                      <div key={group} className="mb-6">
-                        <h4 className="font-semibold text-[14px] mb-3 text-[#e85d14]">{group}</h4>
-                        <ul className="space-y-2 ml-4">
-                          {Array.isArray(items) && items.map((item, i) => (
-                            <li key={i} className="text-[13px] text-[#4a5780]">• {item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))
-                  )}
+      {/* Course Structure (Levels) timeline */}
+      {levels.length > 0 && (
+        <section className="py-14 px-6 bg-white">
+          <div className="max-w-[1280px] mx-auto">
+            <div className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#e85d14] mb-2">Programme Path</div>
+            <h2 className="font-extrabold text-[#0b1730] mb-10" style={{ fontSize: "clamp(22px,2.8vw,30px)" }}>
+              Course Structure
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {levels.map((lvl, i) => (
+                <div key={lvl.id} className="relative bg-[#f8f9fc] rounded-2xl border border-gray-200 p-6">
+                  <div className="w-9 h-9 rounded-full bg-[#e85d14] text-white flex items-center justify-center font-bold text-[14px] mb-4">
+                    {i + 1}
+                  </div>
+                  <h3 className="text-[15px] font-bold text-[#0b1730] mb-1">{lvl.name}</h3>
+                  <div className="text-[12px] text-[#e85d14] font-semibold mb-2">{lvl.duration}</div>
+                  <p className="text-[13px] text-[#5a6380] leading-[1.7]">{lvl.subtitle}</p>
                 </div>
-              </details>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* CTA */}
-      <section className="py-20 px-6 bg-gradient-to-r from-[#0b1730] to-[#152244]">
-        <div className="max-w-[1280px] mx-auto text-center">
-          <h3 className="text-[32px] font-extrabold text-white mb-2">Ready to Start Your Journey?</h3>
-          <p className="text-white/70 mb-8 max-w-[600px] mx-auto">Join our internationally recognized program and transform your future today.</p>
-          <button className="bg-[#e85d14] hover:bg-[#c74d0f] text-white px-8 py-4 rounded-lg font-semibold transition-colors text-[15px]">
-            Apply Now
-          </button>
-        </div>
-      </section>
+      {/* Semesters / Subjects / Electives */}
+      {semesters.length > 0 && (
+        <section className="py-14 px-6 bg-[#f8f9fc]">
+          <div className="max-w-[1280px] mx-auto">
+            <div className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#e85d14] mb-2">Curriculum</div>
+            <h2 className="font-extrabold text-[#0b1730] mb-10" style={{ fontSize: "clamp(22px,2.8vw,30px)" }}>
+              Modules <span className="text-[#e85d14]">Details</span>
+            </h2>
+            <SemestersAccordion semesters={semesters} />
+          </div>
+        </section>
+      )}
+
+      {/* Back link */}
+      <div className="text-center py-10">
+        <Link
+          href="/courses"
+          className="inline-flex items-center gap-2 text-[14px] font-semibold text-[#0f2a5e] hover:text-[#e85d14] transition-colors"
+        >
+          <i className="fas fa-arrow-left text-[12px]"></i> Back to All Courses
+        </Link>
+      </div>
     </>
   );
 }

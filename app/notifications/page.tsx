@@ -3,11 +3,30 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+
+interface ApiResource {
+  id: number;
+  notification_id: number;
+  title: string;
+  url: string;
+}
+
+interface ApiNotification {
+  id: number;
+  title: string;
+  description: string;
+  type: "vacancy" | "result" | "notice" | string;
+  is_read: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  resources: ApiResource[];
+}
 
 interface Notification {
   id: number;
-  type: "vacancy" | "result" | "notice";
+  type: "vacancy" | "result" | "notice" | string;
   title: string;
   desc: string;
   time: string;
@@ -30,21 +49,75 @@ const BADGE: Record<string, string> = {
   notice: "bg-[#e85d14] text-white",
 };
 
+// Turns an ISO timestamp into a short relative label, e.g. "2h ago".
+function formatRelativeTime(iso: string): string {
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return iso;
+
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+
+  if (diffSec < 60) return "Just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+
+  return date.toLocaleDateString("en-LK", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+// Maps the raw API shape (nested under data.notifications.data, with
+// description/is_read/created_at/resources) onto the simpler shape the UI uses.
+function mapApiNotification(item: ApiNotification): Notification {
+  return {
+    id: item.id,
+    type: item.type,
+    title: item.title,
+    desc: item.description,
+    time: formatRelativeTime(item.created_at),
+    unread: !item.is_read,
+    href: item.resources?.[0]?.url,
+  };
+}
+
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [readIds, setReadIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-   
-fetch(`${API_BASE}/api/notifications`)
-      .then((r) => r.json())
-      .then((data) => {
-        const arr = Array.isArray(data) ? data : (data.data ?? []);
-        setNotifications(arr);
+    fetch(`${API_BASE}/api/notifications`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Request failed: ${r.status}`);
+        return r.json();
       })
-      .catch(() => setNotifications([]))
+      .then((json) => {
+        // Expected shape: { success, data: { notifications: { data: ApiNotification[] } } }
+        // Try each known shape in turn and only accept it if it's actually an array,
+        // so a malformed/unexpected response can never reach setState as a non-array.
+        const candidates = [
+          json?.data?.notifications?.data,
+          json?.notifications?.data,
+          json?.data,
+          json,
+        ];
+        const raw: ApiNotification[] =
+          candidates.find((c) => Array.isArray(c)) ?? [];
+
+        setNotifications(raw.map(mapApiNotification));
+      })
+      .catch(() => {
+        setNotifications([]);
+        setError(true);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -52,11 +125,11 @@ fetch(`${API_BASE}/api/notifications`)
     setReadIds((prev) => new Set([...prev, id]));
   }
 
-  const visible = notifications.filter(
+  const visible = (Array.isArray(notifications) ? notifications : []).filter(
     (n) => activeTab === "all" || n.type === activeTab
   );
 
-  const unreadCount = notifications.filter(
+  const unreadCount = (Array.isArray(notifications) ? notifications : []).filter(
     (n) => n.unread && !readIds.has(n.id)
   ).length;
 
@@ -183,6 +256,13 @@ fetch(`${API_BASE}/api/notifications`)
                 </div>
               ))}
             </>
+          ) : error ? (
+            <div className="text-center py-16 flex flex-col items-center gap-3">
+              <i className="fas fa-triangle-exclamation text-[40px] text-gray-200"></i>
+              <p className="text-gray-400 text-[14px]">
+                Couldn&apos;t load notifications. Check that the API is running at {API_BASE}.
+              </p>
+            </div>
           ) : visible.length === 0 ? (
             <div className="text-center py-16 flex flex-col items-center gap-3">
               <i className="fas fa-bell-slash text-[40px] text-gray-200"></i>
