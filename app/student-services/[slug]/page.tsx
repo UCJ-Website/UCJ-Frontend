@@ -180,14 +180,7 @@ export default async function StudentServiceSlugPage({
 
             {/* Actions */}
             <div className="flex flex-wrap gap-3">
-              <a
-                href={item.external_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-[#e85d14] hover:bg-[#c94e0f] text-white px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
-              >
-                <i className="fas fa-external-link-alt" /> {item.external_label}
-              </a>
+            
               <Link
                 href="/student-services"
                 className="inline-flex items-center gap-2 border border-[#0f2a5e]/30 hover:border-[#0f2a5e] text-[#0f2a5e] px-6 py-3 rounded-xl font-semibold text-sm transition-colors"

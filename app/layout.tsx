@@ -4,9 +4,25 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-
 const inter = Inter({ subsets: ["latin"] });
 
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
+const API_BASE = `${ORIGIN}/api`;
+
+async function getCourses() {
+  try {
+    // no-store: navbar must always reflect the latest backend data —
+    // a 1hr revalidate cache meant newly added courses wouldn't show
+    // up until the cache expired.
+    const res = await fetch(`${API_BASE}/courses`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const payload = await res.json();
+    return payload?.data?.courses ?? [];
+  } catch {
+    return [];
+  }
+}
 
 export const metadata: Metadata = {
   title: "University College of Jaffna",
@@ -15,11 +31,14 @@ export const metadata: Metadata = {
     icon: "/ucj.png",
   },
 };
-export default function RootLayout({
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const courses = await getCourses();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -29,7 +48,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning className={`${inter.className} bg-[#f8f9fc] min-h-screen`}>
-        <Navbar />
+        <Navbar courses={courses} />
         <main>{children}</main>
         <Footer />
       </body>

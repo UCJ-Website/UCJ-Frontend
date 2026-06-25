@@ -40,6 +40,20 @@ function resolveImage(path: string | null | undefined): string {
 }
 
 // ===== TYPES =====
+interface Department {
+    id: number;
+    name: string;
+    short_code: string;
+    role_type: string | null;
+}
+
+interface Unit {
+    id: number;
+    name: string;
+    short_code: string;
+    role_type: string | null;
+}
+
 interface StaffMember {
     id: string | number;
     slug: string;
@@ -51,6 +65,8 @@ interface StaffMember {
     email?: string;
     phone?: string;
     linkedin?: string | null;
+    departments: Department[];
+    units: Unit[];
 }
 
 // ===== FILTER DEFINITIONS =====
@@ -63,18 +79,20 @@ const categoryFilters = [
 ];
 
 const academicSubFilters = [
-    { id: "ict", label: "ICT", icon: Monitor },
-    { id: "bst", label: "BST", icon: Wrench },
-    { id: "fot", label: "FOT", icon: FlaskConical },
-    { id: "cm", label: "CM", icon: Compass },
-    { id: "ct", label: "CT", icon: HardHat },
-    { id: "hm", label: "HM", icon: UtensilsCrossed },
-    { id: "pm", label: "PM", icon: Factory },
-    { id: "fm", label: "FM", icon: Tractor },
-    { id: "mt", label: "MT", icon: Bot },
+    { id: "all", label: "All", icon: Users },
+    { id: "ICT", label: "ICT", icon: Monitor },
+    { id: "BST", label: "BST", icon: Wrench },
+    { id: "FT", label: "FT", icon: FlaskConical },
+    { id: "COS", label: "COS", icon: Compass },
+    { id: "CT", label: "CT", icon: HardHat },
+    { id: "HM", label: "HM", icon: UtensilsCrossed },
+    { id: "PT", label: "PT", icon: Factory },
+    { id: "FM", label: "FM", icon: Tractor },
+    { id: "MT", label: "MT", icon: Bot },
 ];
 
 const nonAcademicSubFilters = [
+    { id: "all", label: "All", icon: Users },
     { id: "administrative", label: "Administrative Branch", icon: Building2 },
     { id: "finance", label: "Finance Branch", icon: DollarSign },
     { id: "library", label: "Library", icon: BookOpen },
@@ -100,8 +118,10 @@ function getBadge(member: StaffMember) {
         };
     }
     if (member.category === "academics") {
+        // Show first department short_code as badge label if available
+        const deptCode = member.departments?.[0]?.short_code;
         return {
-            label: "Academic",
+            label: deptCode ? `Academic · ${deptCode}` : "Academic",
             className: "bg-[#e85d14]/10 text-[#e85d14] border border-[#e85d14]/30",
         };
     }
@@ -111,7 +131,6 @@ function getBadge(member: StaffMember) {
     };
 }
 
-// FIX: backend wraps the list under data.staffs.data (paginated response)
 function normalizeStaffResponse(json: unknown): StaffMember[] {
     const raw: any[] =
         (json as any)?.data?.staffs?.data ??
@@ -134,6 +153,8 @@ function normalizeStaffResponse(json: unknown): StaffMember[] {
             email: item.email ?? undefined,
             phone: item.phone ?? undefined,
             linkedin: item.linkedin ?? null,
+            departments: item.departments ?? [],
+            units: item.units ?? [],
         }));
 }
 
@@ -152,40 +173,22 @@ export default function StaffPage() {
             setLoading(true);
             setError(null);
             try {
-                // FIX: endpoint is /staffs, not /staff
-                // FIX: backend defaults to per_page=10 (paginated response).
-                // Since we filter client-side by category/subcategory, we need
-                // ALL active staff in one shot — pass a large per_page so the
-                // paginator doesn't silently cut the list down to 10. The
-                // controller already supports ?per_page=, so no backend
-                // change is required for this fix.
                 const res = await fetch(`${API_URL}/staffs?per_page=1000`, {
                     headers: { Accept: "application/json" },
                 });
-                if (!res.ok) {
-                    throw new Error(`Request failed with status ${res.status}`);
-                }
+                if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
                 const json = await res.json();
-                if (!cancelled) {
-                    setStaffMembers(normalizeStaffResponse(json));
-                }
+                if (!cancelled) setStaffMembers(normalizeStaffResponse(json));
             } catch (err) {
-                if (!cancelled) {
-                    setError(
-                        err instanceof Error
-                            ? err.message
-                            : "Failed to load staff data."
-                    );
-                }
+                if (!cancelled)
+                    setError(err instanceof Error ? err.message : "Failed to load staff data.");
             } finally {
                 if (!cancelled) setLoading(false);
             }
         }
 
         fetchStaff();
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, []);
 
     function selectCategory(id: string) {
@@ -193,14 +196,24 @@ export default function StaffPage() {
         setActiveSub("all");
     }
 
+    // ── FILTER LOGIC ──
     const filtered = staffMembers.filter((m) => {
+        // Category filter
         if (activeCategory !== "all" && m.category !== activeCategory) return false;
-        if (
-            activeSub !== "all" &&
-            (m.category === "academics" || m.category === "non-academic") &&
-            m.subcategory !== activeSub
-        )
-            return false;
+
+        // Sub-filter for academics → match by departments[].short_code
+        if (activeCategory === "academics" && activeSub !== "all") {
+            const hasDept = m.departments.some(
+                (d) => d.short_code.toUpperCase() === activeSub.toUpperCase()
+            );
+            if (!hasDept) return false;
+        }
+
+        // Sub-filter for non-academic → match by subcategory (administrative / finance / library)
+        if (activeCategory === "non-academic" && activeSub !== "all") {
+            if (m.subcategory !== activeSub) return false;
+        }
+
         return true;
     });
 
@@ -256,6 +269,7 @@ export default function StaffPage() {
             {/* ===== STAFF SECTION ===== */}
             <section className="py-16 px-5 bg-[#f8f9fc]">
                 <div className="max-w-[1280px] mx-auto">
+
                     {/* Category Filters */}
                     <div className="flex flex-wrap justify-center gap-3 mb-6">
                         {categoryFilters.map((cat) => {
@@ -281,16 +295,6 @@ export default function StaffPage() {
                     {/* Sub Filters */}
                     {showSubFilters && (
                         <div className="flex flex-wrap justify-center gap-2 mb-12">
-                            <button
-                                onClick={() => setActiveSub("all")}
-                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[12px] font-semibold border transition-all duration-200 ${
-                                    activeSub === "all"
-                                        ? "bg-[#0b1730] text-white border-[#0b1730]"
-                                        : "bg-white text-[#5a6380] border-gray-200 hover:border-[#0b1730]/30"
-                                }`}
-                            >
-                                All
-                            </button>
                             {subFilterList.map((sub) => {
                                 const Icon = sub.icon;
                                 const active = activeSub === sub.id;
@@ -314,7 +318,7 @@ export default function StaffPage() {
 
                     {!showSubFilters && <div className="mb-4" />}
 
-                    {/* Loading state */}
+                    {/* Loading */}
                     {loading && (
                         <div className="flex flex-col items-center justify-center py-24 text-[#5a6380]">
                             <Loader2 className="animate-spin mb-3" size={28} />
@@ -322,7 +326,7 @@ export default function StaffPage() {
                         </div>
                     )}
 
-                    {/* Error state */}
+                    {/* Error */}
                     {!loading && error && (
                         <div className="text-center py-24">
                             <p className="text-[14px] text-red-600 mb-2">
@@ -339,19 +343,17 @@ export default function StaffPage() {
                         </div>
                     )}
 
-                    {/* Current Directors / Head of Division / Academics / Non-Academic grid */}
-                    {!loading &&
-                        !error &&
-                        (currentDirectors.length > 0 || rest.length > 0) && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-2">
-                                {currentDirectors.map((member) => (
-                                    <StaffCard key={member.id} member={member} />
-                                ))}
-                                {rest.map((member) => (
-                                    <StaffCard key={member.id} member={member} />
-                                ))}
-                            </div>
-                        )}
+                    {/* Grid */}
+                    {!loading && !error && (currentDirectors.length > 0 || rest.length > 0) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-2">
+                            {currentDirectors.map((member) => (
+                                <StaffCard key={member.id} member={member} />
+                            ))}
+                            {rest.map((member) => (
+                                <StaffCard key={member.id} member={member} />
+                            ))}
+                        </div>
+                    )}
 
                     {/* Former Directors */}
                     {!loading && !error && formerDirectors.length > 0 && (
@@ -382,11 +384,6 @@ export default function StaffPage() {
     );
 }
 
-// FIX: previously this whole card was wrapped in a <Link> (renders <a>), while
-// the mailto/tel/linkedin icons inside it were also <a> tags. Nested <a> tags
-// are invalid HTML and caused a hydration error. Now the card navigates via
-// router.push on click, and the inner icon links use stopPropagation so they
-// don't trigger card navigation when clicked.
 function StaffCard({ member }: { member: StaffMember }) {
     const badge = getBadge(member);
     const router = useRouter();
@@ -446,9 +443,7 @@ function StaffCard({ member }: { member: StaffMember }) {
                     {member.name}
                 </h3>
                 <p className="text-[13px] text-[#5a6380] mb-3">{member.position}</p>
-                <span
-                    className={`text-[11px] font-semibold px-3 py-1 rounded-full ${badge.className}`}
-                >
+                <span className={`text-[11px] font-semibold px-3 py-1 rounded-full ${badge.className}`}>
                     {badge.label}
                 </span>
             </div>

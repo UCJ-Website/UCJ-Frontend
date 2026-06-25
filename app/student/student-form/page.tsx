@@ -3,13 +3,13 @@ import FormClient from "./FormClient";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-interface StudentForm {
+export interface StudentForm {
   id: number;
   title: string;
+  slug: string;
   description: string;
-  category: string;
-  file_url: string;
-  icon?: string;
+  file_path: string;
+  icon_class?: string;
 }
 
 interface ApiResponse {
@@ -35,7 +35,6 @@ async function getAllForms(): Promise<StudentForm[]> {
 
     if (lastPage <= 1) return firstPage;
 
-    // fetch remaining pages
     const promises = Array.from({ length: lastPage - 1 }, (_, i) =>
       fetch(`${API_BASE}/api/students/forms?page=${i + 2}`, {
         next: { revalidate: 3600 },
@@ -78,14 +77,14 @@ export default async function StudentFormPage() {
           <div className="text-white/50 text-[13px]">
             <Link href="/" className="hover:text-[#e85d14] transition-colors">Home</Link>
             {" / "}
-            <Link href="/student" className="hover:text-[#e85d14] transition-colors">Student</Link>
+            <span className="text-white/50">Student</span>
             {" / "}
             <span className="text-[#e85d14]">Student Forms</span>
           </div>
         </div>
       </div>
 
-      {/* CLIENT — filter + grid */}
+      {/* CLIENT — grid */}
       <FormClient forms={forms} />
 
       {/* INFO STRIP */}
@@ -93,7 +92,7 @@ export default async function StudentFormPage() {
         For assistance, visit the{" "}
         <strong>Student Services Unit</strong> at the Admin Office, No 29 Brown Road, Kokuvil East, Jaffna
         {" "}or call{" "}
-        <strong>+94 0212 217791</strong>. Office hours: Mon – Fri, 8:30 AM – 4:00 PM.
+        <strong>+94 0212 217791</strong>. Office hours: Mon &ndash; Fri, 8:30 AM &ndash; 4:00 PM.
       </div>
     </>
   );

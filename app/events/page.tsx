@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 // .env.local may or may not already include "/api" — normalize it here.
@@ -86,6 +86,27 @@ export default function LatestEventsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [activeMonth, setActiveMonth] = useState<number | "all">("all");
 
+  // --- sticky filter bar watcher --------------------------------------
+  // Same fix used on the Gallery page: pure CSS `position: sticky` can
+  // silently fail to "stick" if any ancestor sets a transform/overflow
+  // that creates a new containing block. `isolate` gives this bar its own
+  // stacking context so it can't be undermined by Navbar's higher
+  // z-index, and the scroll watcher gives us isStuck as a visual smoke test.
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  const [isStuck, setIsStuck] = useState(false);
+  const FILTER_BAR_TOP = 108; // topbar (38px) + header (70px)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!filterBarRef.current) return;
+      const rect = filterBarRef.current.getBoundingClientRect();
+      setIsStuck(rect.top <= FILTER_BAR_TOP);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   useEffect(() => {
     // /api/events -> { data: { events: { data: [...] } } }
     fetch(`${API_BASE}/events`)
@@ -140,7 +161,10 @@ export default function LatestEventsPage() {
       </div>
 
       {/* FILTER BAR */}
-      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-[108px] z-40">
+      <div
+        ref={filterBarRef}
+        className={`relative isolate bg-white border-b border-gray-200 sticky top-[108px] z-40 transition-shadow duration-200 ${isStuck ? "shadow-md" : "shadow-sm"}`}
+      >
         <div className="max-w-[1280px] mx-auto px-5 py-3 flex gap-2 flex-wrap">
           <span className="text-[12px] font-semibold text-gray-400 self-center mr-1">Filter:</span>
           {TABS.map((tab) => (
@@ -215,12 +239,17 @@ export default function LatestEventsPage() {
             {upcoming.map((ev) => (
               <div key={ev.id} className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col">
                 <div className="relative h-[200px] overflow-hidden bg-[#0b1730]">
-                  <img
-                    src={ev.img}
-                    alt={ev.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
+                  {/* Guarded against empty-string src — see Home.tsx fix.
+                      When there's no image, the dark bg-[#0b1730]
+                      background of this wrapper shows on its own. */}
+                  {ev.img && (
+                    <img
+                      src={ev.img}
+                      alt={ev.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  )}
                   <div className="absolute top-3 left-3 bg-[rgba(11,23,48,0.85)] text-white text-center px-2.5 py-1.5 rounded-xl">
                     <div className="text-[18px] font-extrabold leading-none">{ev.day}</div>
                     <div className="text-[10px] font-semibold uppercase">{ev.month}</div>

@@ -110,18 +110,18 @@ export default function AboutPage() {
                 Technical Education
               </h3>
               <div className="flex flex-col gap-[14px]">
-                <p className="text-[#607080] leading-[1.8] text-[0.95rem]">
+                <p className="text-[#607080] leading-[1.8] text-[0.95rem] text-justify">
                   The University College of Jaffna was established in 2014 under the
                   University of Vocational Technology Act No. 31 of 2008, which
                   provides legal provision to establish University Colleges.
                 </p>
-                <p className="text-[#607080] leading-[1.8] text-[0.95rem]">
+                <p className="text-[#607080] leading-[1.8] text-[0.95rem] text-justify">
                   It operates under 'University College' Ordinance, No. 1 of 2014,
                   of the University of Vocational Technology. Accordingly, the
                   University College of Jaffna operates as an autonomous body with
                   administration and financial powers.
                 </p>
-                <p className="text-[#607080] leading-[1.8] text-[0.95rem]">
+                <p className="text-[#607080] leading-[1.8] text-[0.95rem] text-justify">
                   We offer National Diploma (NVQ Level 5) and Higher National
                   Diploma (NVQ Level 6) courses leading to a degree offered by the UNIVOTEC.
                 </p>
@@ -157,18 +157,18 @@ export default function AboutPage() {
             Our roots and the foundation that built us.
           </p>
           <div className="flex flex-col gap-[14px] bg-[#1a2f4a] rounded-2xl p-10 border-l-[5px] border-[#e85d14] mt-6">
-            <p className="text-[#b0c8e0] leading-[1.9] text-[0.95rem]">
+            <p className="text-[#b0c8e0] leading-[1.9] text-[0.95rem] text-justify">
               The University College of Jaffna was established in 2014 under the
               University of Vocational Technology Act No. 31 of 2008, which
               provides legal provision to establish University Colleges and
               operates under 'University College' Ordinance, No. 1 of 2014, of the
               University of Vocational Technology.
             </p>
-            <p className="text-[#b0c8e0] leading-[1.9] text-[0.95rem]">
+            <p className="text-[#b0c8e0] leading-[1.9] text-[0.95rem] text-justify">
               Accordingly, the University College of Jaffna operates as an
               autonomous body with administration and financial powers.
             </p>
-            <p className="text-[#b0c8e0] leading-[1.9] text-[0.95rem] mb-0">
+            <p className="text-[#b0c8e0] leading-[1.9] text-[0.95rem] text-justify mb-0">
               The University College of Jaffna offers National Diploma (NVQ Level
               5) and Higher National Diploma (NVQ Level 6) courses leading to a
               degree offered by the UNIVOTEC. This will facilitate to produce
@@ -216,7 +216,7 @@ export default function AboutPage() {
                 <div className="font-playfair text-[1.3rem] font-extrabold text-[#e85d14] tracking-[0.05em] mb-[14px]">
                   {item.label}
                 </div>
-                <p className="text-[#b0c8e0] leading-[1.8] text-[0.95rem]">
+                <p className="text-[#b0c8e0] leading-[1.8] text-[0.95rem] text-justify">
                   {item.text}
                 </p>
               </div>

@@ -31,7 +31,6 @@ interface Notification {
   desc: string;
   time: string;
   unread: boolean;
-  href?: string;
 }
 
 type TabKey = "all" | "vacancy" | "result" | "notice";
@@ -49,7 +48,6 @@ const BADGE: Record<string, string> = {
   notice: "bg-[#e85d14] text-white",
 };
 
-// Turns an ISO timestamp into a short relative label, e.g. "2h ago".
 function formatRelativeTime(iso: string): string {
   const date = new Date(iso);
   if (isNaN(date.getTime())) return iso;
@@ -72,8 +70,6 @@ function formatRelativeTime(iso: string): string {
   });
 }
 
-// Maps the raw API shape (nested under data.notifications.data, with
-// description/is_read/created_at/resources) onto the simpler shape the UI uses.
 function mapApiNotification(item: ApiNotification): Notification {
   return {
     id: item.id,
@@ -82,7 +78,6 @@ function mapApiNotification(item: ApiNotification): Notification {
     desc: item.description,
     time: formatRelativeTime(item.created_at),
     unread: !item.is_read,
-    href: item.resources?.[0]?.url,
   };
 }
 
@@ -100,9 +95,6 @@ export default function NotificationsPage() {
         return r.json();
       })
       .then((json) => {
-        // Expected shape: { success, data: { notifications: { data: ApiNotification[] } } }
-        // Try each known shape in turn and only accept it if it's actually an array,
-        // so a malformed/unexpected response can never reach setState as a non-array.
         const candidates = [
           json?.data?.notifications?.data,
           json?.notifications?.data,
@@ -111,7 +103,6 @@ export default function NotificationsPage() {
         ];
         const raw: ApiNotification[] =
           candidates.find((c) => Array.isArray(c)) ?? [];
-
         setNotifications(raw.map(mapApiNotification));
       })
       .catch(() => {
@@ -136,8 +127,8 @@ export default function NotificationsPage() {
   function NotifCard({ notif }: { notif: Notification }) {
     const isUnread = notif.unread && !readIds.has(notif.id);
     return (
-      <a
-        href={notif.href ?? "#"}
+      <Link
+        href={`/notifications/${notif.id}`}
         onClick={() => markRead(notif.id)}
         className={
           "flex gap-4 p-5 rounded-2xl border transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 " +
@@ -179,7 +170,7 @@ export default function NotificationsPage() {
         <div className="self-center shrink-0 text-gray-300">
           <i className="fas fa-chevron-right text-[12px]"></i>
         </div>
-      </a>
+      </Link>
     );
   }
 

@@ -269,7 +269,7 @@ export default function Footer() {
           onClick={() => setShowDevModal(true)}
           className="text-[#607080] hover:text-[#e85d14] underline underline-offset-2 transition-colors bg-transparent border-none cursor-pointer p-0"
         >
-          Developed by ICT 1st Batch
+          Developed by ICT 1st Batch Students
         </button>
       </div>
 

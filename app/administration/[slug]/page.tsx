@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 
 const management: Record<string, {
@@ -10,6 +11,7 @@ const management: Record<string, {
   responsibilities: string[];
   external_url: string;
   external_label: string;
+  positionKeyword: string;
 }> = {
   "director-office": {
     icon: "fa-landmark",
@@ -33,6 +35,7 @@ const management: Record<string, {
     ],
     external_url: "https://www.jfn.ac.lk/unit/office-of-the-vice-chancellor/",
     external_label: "Visit University of Jaffna",
+    positionKeyword: "Director",
   },
   "admin-office": {
     icon: "fa-pen-nib",
@@ -56,6 +59,7 @@ const management: Record<string, {
     ],
     external_url: "http://www.jfn.ac.lk/index.php/unit/office-of-the-registrar/",
     external_label: "Visit Registrar's Office",
+    positionKeyword: "Admin Office",
   },
   "finance-accounts": {
     icon: "fa-coins",
@@ -79,8 +83,44 @@ const management: Record<string, {
     ],
     external_url: "https://jfn.ac.lk/office-of-the-bursar/",
     external_label: "Visit Bursar's Office",
+    positionKeyword: "Finance",
   },
 };
+
+type Staff = {
+  id: number;
+  slug: string;
+  name: string;
+  position: string;
+  category: string;
+  subcategory: string;
+  photo: string | null;
+  email: string;
+  phone: string | null;
+  office: string | null;
+  linkedin: string | null;
+  research_gate: string | null;
+  google_scholar: string | null;
+  joined_date: string | null;
+  departments: { id: number; name: string; short_code: string }[];
+  units: { id: number; name: string; short_code: string }[];
+};
+
+async function getStaffForOffice(positionKeyword: string): Promise<Staff[]> {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/staffs?per_page=100", {
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const all: Staff[] = json?.data?.staffs?.data ?? [];
+    return all.filter((s) =>
+      s.position.toLowerCase().includes(positionKeyword.toLowerCase())
+    );
+  } catch {
+    return [];
+  }
+}
 
 export default async function AdminSlugPage({
   params,
@@ -90,6 +130,8 @@ export default async function AdminSlugPage({
   const { slug } = await params;
   const item = management[slug];
   if (!item) notFound();
+
+  const staff = await getStaffForOffice(item.positionKeyword);
 
   return (
     <>
@@ -102,7 +144,7 @@ export default async function AdminSlugPage({
               "radial-gradient(ellipse at 70% 50%, rgba(232,93,20,0.15) 0%, transparent 60%)",
           }}
         />
-        <div className="relative z-10 max-w-3xl mx-auto">
+        <div className="relative z-10 max-w-5xl mx-auto">
           <div className="flex items-center justify-center gap-2 text-[#e85d14] text-sm font-semibold uppercase tracking-widest mb-4">
             <i className={`fas ${item.icon}`} />
             <span>UCJ Administration</span>
@@ -123,7 +165,7 @@ export default async function AdminSlugPage({
         </div>
       </div>
 
-      <main className="max-w-[1000px] mx-auto px-6 py-16">
+      <main className="max-w-6xl mx-auto px-4 py-16">
         <div className="rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
           {/* Card Header */}
           <div className="bg-gradient-to-r from-[#0a1931] to-[#122347] px-8 py-7 flex items-center gap-5">
@@ -167,14 +209,7 @@ export default async function AdminSlugPage({
 
             {/* Actions */}
             <div className="flex flex-wrap gap-3">
-             <a 
-                href={item.external_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-[#e85d14] hover:bg-[#c94e0f] text-white px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
-              >
-                <i className="fas fa-external-link-alt" /> {item.external_label}
-              </a>
+            
               <Link
                 href="/administration"
                 className="inline-flex items-center gap-2 border border-[#0f2a5e]/30 hover:border-[#0f2a5e] text-[#0f2a5e] px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
@@ -184,6 +219,100 @@ export default async function AdminSlugPage({
             </div>
           </div>
         </div>
+
+        {/* ── STAFF SECTION ── */}
+        {staff.length > 0 && (
+          <section className="mt-14">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-1 h-6 bg-[#e85d14] rounded-full" />
+              <h3 className="text-xl font-bold text-[#0f2a5e]">Office Staff</h3>
+              <span className="ml-auto text-xs font-semibold bg-[#e85d14]/10 text-[#e85d14] px-3 py-1 rounded-full">
+                {staff.length} {staff.length === 1 ? "Member" : "Members"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {staff.map((s) => (
+                <div
+                  key={s.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  {/* Photo */}
+                  <div className="bg-gradient-to-br from-[#0a1931] to-[#122347] h-36 flex items-center justify-center relative">
+                    {s.photo ? (
+                      <Image
+                        src={s.photo}
+                        alt={s.name}
+                        fill
+                        className="object-cover object-top"
+                        sizes="(max-width: 768px) 100vw, 25vw"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full bg-[#e85d14]/20 border-2 border-[#e85d14]/40 flex items-center justify-center">
+                        <i className="fas fa-user text-[#e85d14] text-3xl" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-5">
+                    <h4 className="font-bold text-[#0f2a5e] text-base mb-0.5 truncate">{s.name}</h4>
+                    <p className="text-[#e85d14] text-xs font-semibold mb-3 truncate">{s.position}</p>
+
+                    <div className="space-y-1.5 text-xs text-gray-500">
+                      {s.email && (
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-envelope text-[#e85d14] w-3 shrink-0" />
+                          <a href={`mailto:${s.email}`} className="hover:text-[#e85d14] truncate transition-colors">
+                            {s.email}
+                          </a>
+                        </div>
+                      )}
+                      {s.phone && (
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-phone text-[#e85d14] w-3 shrink-0" />
+                          <a href={`tel:${s.phone}`} className="hover:text-[#e85d14] transition-colors">
+                            {s.phone}
+                          </a>
+                        </div>
+                      )}
+                      {s.office && (
+                        <div className="flex items-center gap-2">
+                          <i className="fas fa-map-marker-alt text-[#e85d14] w-3 shrink-0" />
+                          <span>{s.office}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Social links */}
+                    {(s.linkedin || s.research_gate || s.google_scholar) && (
+                      <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+                        {s.linkedin && (
+                          <a href={s.linkedin} target="_blank" rel="noopener noreferrer"
+                            className="w-7 h-7 rounded-full bg-[#0f2a5e]/10 hover:bg-[#0f2a5e] text-[#0f2a5e] hover:text-white flex items-center justify-center transition-colors text-xs">
+                            <i className="fab fa-linkedin-in" />
+                          </a>
+                        )}
+                        {s.research_gate && (
+                          <a href={s.research_gate} target="_blank" rel="noopener noreferrer"
+                            className="w-7 h-7 rounded-full bg-[#0f2a5e]/10 hover:bg-[#0f2a5e] text-[#0f2a5e] hover:text-white flex items-center justify-center transition-colors text-xs">
+                            <i className="fab fa-researchgate" />
+                          </a>
+                        )}
+                        {s.google_scholar && (
+                          <a href={s.google_scholar} target="_blank" rel="noopener noreferrer"
+                            className="w-7 h-7 rounded-full bg-[#0f2a5e]/10 hover:bg-[#0f2a5e] text-[#0f2a5e] hover:text-white flex items-center justify-center transition-colors text-xs">
+                            <i className="fas fa-graduation-cap" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Contact Strip */}
         <section className="mt-12 bg-[#0f2a5e] rounded-2xl px-8 py-10 flex flex-col md:flex-row items-center justify-between gap-6">

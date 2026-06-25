@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 // .env.local may or may not already include "/api" — normalize it here.
@@ -69,6 +69,27 @@ export default function LatestNewsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
 
+  // --- sticky filter bar watcher --------------------------------------
+  // Same fix used on the Gallery page: pure CSS `position: sticky` can
+  // silently fail to "stick" if any ancestor sets a transform/overflow
+  // that creates a new containing block. `isolate` gives this bar its own
+  // stacking context so it can't be undermined by Navbar's higher
+  // z-index, and the scroll watcher gives us isStuck as a visual smoke test.
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  const [isStuck, setIsStuck] = useState(false);
+  const FILTER_BAR_TOP = 108; // topbar (38px) + header (70px)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!filterBarRef.current) return;
+      const rect = filterBarRef.current.getBoundingClientRect();
+      setIsStuck(rect.top <= FILTER_BAR_TOP);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   useEffect(() => {
     // /api/news -> { data: { allNews: { data: [...] } } }
     fetch(`${API_BASE}/news`)
@@ -103,7 +124,10 @@ export default function LatestNewsPage() {
       </div>
 
       {/* FILTER BAR */}
-      <div className="bg-white border-b border-gray-200 shadow-sm sticky top-[108px] z-40">
+      <div
+        ref={filterBarRef}
+        className={`relative isolate bg-white border-b border-gray-200 sticky top-[108px] z-40 transition-shadow duration-200 ${isStuck ? "shadow-md" : "shadow-sm"}`}
+      >
         <div className="max-w-[1280px] mx-auto px-5 py-3 flex gap-2 flex-wrap">
           <span className="text-[12px] font-semibold text-gray-400 self-center mr-1">Filter:</span>
           {TABS.map((tab) => (
@@ -173,12 +197,17 @@ export default function LatestNewsPage() {
                       className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col"
                     >
                       <div className="h-[180px] overflow-hidden bg-[#0b1730]">
-                        <img
-                          src={item.img}
-                          alt={item.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                        />
+                        {/* Guarded against empty-string src — see Home.tsx fix.
+                            When there's no image, the dark bg-[#0b1730]
+                            background of this wrapper shows on its own. */}
+                        {item.img && (
+                          <img
+                            src={item.img}
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                        )}
                       </div>
                       <div className="p-5 flex flex-col gap-2 flex-1">
                         <span className={"text-[10px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full w-fit " + (BADGE[item.category] ?? "bg-gray-200 text-gray-600")}>

@@ -78,12 +78,18 @@ function CardGrid({ cards, altBg = false }: { cards: NewsCard[]; altBg?: boolean
           className={`flex flex-col rounded-2xl overflow-hidden border border-[#97938f] transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg cursor-pointer ${altBg ? "bg-[#f8f9fc]" : "bg-white"}`}
         >
           <div className="h-[172px] relative overflow-hidden shrink-0">
-            <img
-              src={card.img}
-              alt={card.title}
-              className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
+            {/* Guarded: an empty string in src makes the browser treat it as
+                "reload current page", which is what threw the console error.
+                Only render the <img> when we actually have a resolved URL —
+                otherwise the gradient fallback below shows on its own. */}
+            {card.img && (
+              <img
+                src={card.img}
+                alt={card.title}
+                className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            )}
             <div className={`absolute inset-0 bg-gradient-to-br ${card.fallbackClass} flex items-center justify-center -z-10`}>
               <i className={`fas ${card.fallbackIcon} text-5xl text-white/20`}></i>
             </div>
@@ -261,12 +267,16 @@ export default function HomeSections() {
               {courses.map((course) => (
                 <div key={course.code || course.title} className="flex flex-col bg-white rounded-2xl overflow-hidden border border-[#97938f] transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg cursor-pointer">
                   <div className="h-[150px] relative overflow-hidden">
-                    <img
-                      src={course.img}
-                      alt={course.title}
-                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
+                    {/* Same guard as CardGrid above — empty src string triggers
+                        the Next.js console error and an unnecessary network hit. */}
+                    {course.img && (
+                      <img
+                        src={course.img}
+                        alt={course.title}
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
                     <div className={`absolute inset-0 bg-gradient-to-br ${course.fallbackClass} flex items-center justify-center -z-10`}>
                       <i className={`fas ${course.fallbackIcon} text-[40px] text-white/20`}></i>
                     </div>
