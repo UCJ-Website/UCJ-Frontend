@@ -139,7 +139,7 @@ export default async function CourseDetailsPage({ params }: { params: Promise<{ 
             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/80 text-[12px] font-semibold px-4 py-1.5 rounded-full mb-5">
               <i className="fas fa-graduation-cap text-[#e85d14]"></i> {course.level}
             </div>
-            <h1 className="font-extrabold text-white leading-tight mb-4" style={{ fontSize: "clamp(28px,4vw,44px)" }}>
+            <h1 className="font-extrabold text-white leading-tight mb-4" style={{ fontSize: "clamp(20px,2vw,35px)" }}>
               {course.title}
             </h1>
             <p className="text-white/65 text-[15px] leading-[1.75] mb-6">
