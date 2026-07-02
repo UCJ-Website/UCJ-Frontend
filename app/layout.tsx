@@ -64,7 +64,7 @@ export default async function RootLayout({
       </head>
       <body suppressHydrationWarning className={`${inter.className} bg-[#f8f9fc] min-h-screen`}>
         <Navbar courses={courses} departments={departments} />
-        <main>{children}</main>
+        <main className="pt-[108px]">{children}</main>
         <Footer />
       </body>
     </html>

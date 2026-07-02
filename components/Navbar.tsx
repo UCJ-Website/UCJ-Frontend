@@ -113,7 +113,7 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
         { icon: "fa-user-edit", label: "Assistant Registrar", href: "/about/assistant-registrar", isHeader: false },
         { icon: "fa-hand-holding-usd", label: "Assistant Bursar", href: "/about/assistant-bursar", isHeader: false },
         { icon: "fa-user-cog", label: "Assistant Librarian", href: "/about/assistant-librarian", isHeader: false },
-       
+
       ],
     },
     {
@@ -169,7 +169,7 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
     <div>
       {/* ── TOPBAR ── */}
       <div
-        className="bg-[#0f1c2e] text-[#8da0c4] text-[11px] px-5 py-2 flex items-center gap-5 sticky top-0"
+        className="bg-[#0f1c2e] text-[#8da0c4] text-[11px] px-5 py-2 flex items-center gap-5 fixed top-0 left-0 right-0"
         style={{ zIndex: 1001 }}
       >
         <span className="flex items-center gap-2 ml-4 shrink-0">
@@ -185,8 +185,8 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
 
       {/* ── HEADER ── */}
       <header
-        className="bg-white border-b border-gray-200 sticky shadow-sm"
-        style={{ zIndex: 1000, top: 38 }}
+        className="bg-white border-b border-gray-200 fixed left-0 right-0 shadow-sm"
+        style={{ zIndex: 1000, top: 33 }}
       >
         <div className="max-w-[1280px] mx-auto px-10 h-[70px] flex items-center justify-between gap-6">
 
@@ -251,11 +251,11 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
                       <i className="fas fa-hand-holding-usd text-gray-400 w-[18px] text-center" />
                       Assistant Bursar
                     </Link>
-                      <Link href="/about/assistant-librarian" onClick={() => closeNow("about")} className={di}>
+                    <Link href="/about/assistant-librarian" onClick={() => closeNow("about")} className={di}>
                       <i className="fas fa-user-cog text-gray-400 w-[18px] text-center" />
-                     Assistant Librarian
+                      Assistant Librarian
                     </Link>
-                    
+
                   </div>
                 </div>
               </div>
@@ -328,7 +328,7 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
                       <i className="fas fa-school text-[#e85d14]" /> Units
                     </div>
                     {[
-                      
+
                       { icon: "fa-handshake", label: "Career Guidance Unit", href: "/academic/units/career-guidance-unit" },
                       { icon: "fa-users", label: "Staff Development Unit", href: "/academic/units/staff-development-unit" },
                       { icon: "fa-graduation-cap", label: "HRDC Unit", href: "/academic/units/hrdc-unit" },

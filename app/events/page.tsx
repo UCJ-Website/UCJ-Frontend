@@ -86,6 +86,12 @@ export default function LatestEventsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [activeMonth, setActiveMonth] = useState<number | "all">("all");
 
+  // --- pagination (backend-driven, /api/events?page=N) -----------------
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [totalEvents, setTotalEvents] = useState(0);
+  const gridTopRef = useRef<HTMLDivElement>(null);
+
   // --- sticky filter bar watcher --------------------------------------
   // Same fix used on the Gallery page: pure CSS `position: sticky` can
   // silently fail to "stick" if any ancestor sets a transform/overflow
@@ -108,17 +114,27 @@ export default function LatestEventsPage() {
   }, []);
 
   useEffect(() => {
-    // /api/events -> { data: { events: { data: [...] } } }
-    fetch(`${API_BASE}/events`)
+    // /api/events?page=N -> { data: { events: { data: [...], current_page, last_page, total } } }
+    setLoading(true);
+    fetch(`${API_BASE}/events?page=${page}`)
       .then((r) => r.json())
       .then((payload) => {
-        const items = payload?.data?.events?.data ?? [];
+        const eventsBlock = payload?.data?.events ?? {};
+        const items = eventsBlock?.data ?? [];
         setEvents(items.map(mapEventItem));
+        setLastPage(eventsBlock?.last_page ?? 1);
+        setTotalEvents(eventsBlock?.total ?? items.length);
       })
-      .catch(() => setEvents([]))
+      .catch(() => {
+        setEvents([]);
+        setLastPage(1);
+        setTotalEvents(0);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
+  // Category/month filters apply only within the currently loaded page,
+  // since the event list itself is paginated by the backend.
   const filtered = events.filter((e) => {
     const catMatch = activeTab === "all" || e.category === activeTab;
     const monthMatch = activeMonth === "all" || MONTHS.indexOf(e.month) === activeMonth;
@@ -130,6 +146,28 @@ export default function LatestEventsPage() {
 
   const monthsWithEvents = new Set(events.map((e) => MONTHS.indexOf(e.month)));
 
+  function goToPage(next: number) {
+    if (next < 1 || next > lastPage || next === page) return;
+    setPage(next);
+    gridTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Builds a compact page-number list with ellipses, e.g. 1 … 4 5 [6] 7 8 … 12
+  function getPageNumbers(): (number | "...")[] {
+    const delta = 1;
+    const range: (number | "...")[] = [];
+    const left = Math.max(2, page - delta);
+    const right = Math.min(lastPage - 1, page + delta);
+
+    range.push(1);
+    if (left > 2) range.push("...");
+    for (let i = left; i <= right; i++) range.push(i);
+    if (right < lastPage - 1) range.push("...");
+    if (lastPage > 1) range.push(lastPage);
+
+    return range;
+  }
+
   function SkeletonCard() {
     return (
       <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 animate-pulse flex flex-col">
@@ -139,6 +177,62 @@ export default function LatestEventsPage() {
           <div className="h-4 bg-gray-200 rounded w-3/4" />
           <div className="h-3 bg-gray-100 rounded w-1/2" />
         </div>
+      </div>
+    );
+  }
+
+  function Pagination() {
+    if (lastPage <= 1) return null;
+    return (
+      <div className="flex items-center justify-center gap-2 mt-10 mb-4 flex-wrap">
+        <button
+          onClick={() => goToPage(page - 1)}
+          disabled={page === 1}
+          className={
+            "w-9 h-9 rounded-lg text-[13px] font-semibold border flex items-center justify-center transition-colors " +
+            (page === 1
+              ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed"
+              : "bg-white text-[#0b1730] border-gray-200 hover:border-[#e85d14] hover:text-[#e85d14]")
+          }
+          aria-label="Previous page"
+        >
+          <i className="fas fa-chevron-left text-[11px]"></i>
+        </button>
+
+        {getPageNumbers().map((n, i) =>
+          n === "..." ? (
+            <span key={`ellipsis-${i}`} className="w-9 h-9 flex items-center justify-center text-[13px] text-gray-300">
+              …
+            </span>
+          ) : (
+            <button
+              key={n}
+              onClick={() => goToPage(n)}
+              className={
+                "w-9 h-9 rounded-lg text-[13px] font-semibold border flex items-center justify-center transition-colors " +
+                (n === page
+                  ? "bg-[#0b1730] text-white border-[#0b1730]"
+                  : "bg-white text-[#3d4a6a] border-gray-200 hover:border-[#0b1730]")
+              }
+            >
+              {n}
+            </button>
+          )
+        )}
+
+        <button
+          onClick={() => goToPage(page + 1)}
+          disabled={page === lastPage}
+          className={
+            "w-9 h-9 rounded-lg text-[13px] font-semibold border flex items-center justify-center transition-colors " +
+            (page === lastPage
+              ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed"
+              : "bg-white text-[#0b1730] border-gray-200 hover:border-[#e85d14] hover:text-[#e85d14]")
+          }
+          aria-label="Next page"
+        >
+          <i className="fas fa-chevron-right text-[11px]"></i>
+        </button>
       </div>
     );
   }
@@ -184,7 +278,7 @@ export default function LatestEventsPage() {
         </div>
       </div>
 
-      <div className="max-w-[1280px] mx-auto px-5 py-8">
+      <div className="max-w-[1280px] mx-auto px-5 py-8" ref={gridTopRef}>
 
         {/* MONTH STRIP */}
         <div className="flex items-center gap-3 mb-8 flex-wrap">
@@ -276,7 +370,62 @@ export default function LatestEventsPage() {
           </div>
         )}
 
-        {/* PAST */}
+        {/* PAST (shown only when the past filter finds items on this page) */}
+        {!loading && past.length > 0 && (
+          <>
+            <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400 mb-4 flex items-center gap-2">
+              <span className="w-4 h-0.5 bg-gray-400 rounded"></span>
+              Past Events
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-4">
+              {past.map((ev) => (
+                <div key={ev.id} className="bg-white rounded-2xl overflow-hidden border border-gray-200 opacity-80 hover:opacity-100 hover:shadow-lg transition-all duration-200 flex flex-col">
+                  <div className="relative h-[200px] overflow-hidden bg-[#0b1730]">
+                    {ev.img && (
+                      <img
+                        src={ev.img}
+                        alt={ev.title}
+                        className="w-full h-full object-cover grayscale-[30%]"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
+                    <div className="absolute top-3 left-3 bg-[rgba(11,23,48,0.85)] text-white text-center px-2.5 py-1.5 rounded-xl">
+                      <div className="text-[18px] font-extrabold leading-none">{ev.day}</div>
+                      <div className="text-[10px] font-semibold uppercase">{ev.month}</div>
+                    </div>
+                    <span className={"absolute top-3 right-3 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full " + (STATUS_BADGE[ev.status] ?? "bg-gray-500 text-white")}>
+                      {ev.status}
+                    </span>
+                  </div>
+                  <div className="p-5 flex flex-col gap-2.5 flex-1">
+                    <span className={"text-[10px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full w-fit " + (BADGE[ev.category] ?? "bg-gray-200 text-gray-600")}>
+                      {ev.category}
+                    </span>
+                    <h3 className="text-[14px] font-semibold text-[#0b1730] leading-[1.5] flex-1">{ev.title}</h3>
+                    <div className="flex flex-col gap-1 text-[12px] text-gray-400">
+                      <span className="flex items-center gap-1.5"><i className="fas fa-clock text-[#e85d14] text-[10px]"></i>{ev.time}</span>
+                      <span className="flex items-center gap-1.5"><i className="fas fa-map-marker-alt text-[#e85d14] text-[10px]"></i>{ev.location}</span>
+                    </div>
+                    <Link href={ev.href ?? "#"} className="inline-flex items-center gap-1.5 text-[#e85d14] text-[12px] font-semibold mt-auto pt-2 hover:gap-2.5 transition-all duration-200">
+                      View Details <i className="fas fa-chevron-right text-[10px]"></i>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* PAGINATION */}
+        {!loading && (
+          <>
+            <Pagination />
+            <div className="text-center text-[12px] text-gray-400 mb-6">
+              Page {page} of {lastPage} · {totalEvents} total events
+            </div>
+          </>
+        )}
+
       </div>
     </>
   );
