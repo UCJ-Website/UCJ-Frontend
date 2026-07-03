@@ -13,6 +13,25 @@ function resolveImage(path: string | null | undefined): string {
   return `${ORIGIN}/${path.replace(/^\/+/, "")}`;
 }
 
+// Pulls a trailing "Mon YYYY - Mon YYYY" style range out of a subcategory
+// string like "Head of Department (Former Acting Director / CEO, Nov 2020
+// - Nov 2021)". Some former directors never got `position` set to
+// "Former Director" — they only have this parenthetical note in
+// `subcategory` while `position` still shows their regular title (e.g.
+// "Senior Lecturer"). This lets the UI still surface *when* they served.
+function extractFormerPeriod(subcategory: string | null): string | null {
+  if (!subcategory) return null;
+  const bracket = subcategory.match(/\(([^)]+)\)/);
+  if (!bracket) return null;
+
+  const inner = bracket[1];
+  const parts = inner.split(",");
+  const last = parts[parts.length - 1].trim();
+
+  // only treat it as a "former year" if it actually looks like a date range
+  return /\d/.test(last) ? last : null;
+}
+
 // ===== PAGE META =====
 // IMPORTANT — confirmed from actual API data:
 // Director/Former-Director records do NOT use category: "director".
@@ -25,6 +44,15 @@ function resolveImage(path: string | null | undefined): string {
 // If a "current Director" page is still empty, that's because no staff
 // row exists yet with position "Director" — that's a data gap, add the
 // row via the dashboard, not a frontend bug.
+//
+// NOTE ON "FORMER DIRECTOR": some former (acting) directors were never
+// given `position: "Former Director"` in the DB — they reverted to their
+// substantive academic title (e.g. "Senior Lecturer") and the only trace
+// of their directorship is a parenthetical note inside `subcategory`
+// (e.g. "Head of Department (Former Acting Director / CEO, Nov 2020 -
+// Nov 2021)"). The exact-match `position` filter alone will miss these
+// people, so fetchPeople() backfills them in for this specific page —
+// see fetchAllStaffMatchingSubcategory() below.
 const pageMeta: Record<string, {
   title: string;
   subtitle: string;
@@ -96,6 +124,23 @@ type Staff = {
   units?: Unit[];
 };
 
+// Backend only supports exact-match filtering (category / subcategory /
+// position), so there's no server-side "contains" search for subcategory.
+// For cases like the former-acting-director backfill, we pull a large
+// page of staff and match the pattern client-side instead.
+async function fetchAllStaffMatchingSubcategory(pattern: RegExp): Promise<Staff[]> {
+  try {
+    const res = await fetch(`${API_URL}/staffs?per_page=500`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const all: Staff[] = json?.data?.staffs?.data ?? [];
+    return all.filter((p) => p.subcategory && pattern.test(p.subcategory));
+  } catch (err) {
+    console.error("fetchAllStaffMatchingSubcategory failed:", err);
+    return [];
+  }
+}
+
 async function fetchPeople(slug: string): Promise<Staff[]> {
   const meta = pageMeta[slug];
   if (!meta) return [];
@@ -115,7 +160,22 @@ async function fetchPeople(slug: string): Promise<Staff[]> {
     const res = await fetch(`${API_URL}/staffs?${qs.toString()}`, { cache: "no-store" });
     if (!res.ok) return [];
     const json = await res.json();
-    return json?.data?.staffs?.data ?? [];
+    const people: Staff[] = json?.data?.staffs?.data ?? [];
+
+    // Backfill former (acting) directors whose `position` was never
+    // updated to "Former Director" — see the comment on pageMeta above.
+    if (slug === "former-director") {
+      const extra = await fetchAllStaffMatchingSubcategory(/former\s+(acting\s+)?director/i);
+      const seen = new Set(people.map((p) => p.id));
+      for (const p of extra) {
+        if (!seen.has(p.id)) {
+          people.push(p);
+          seen.add(p.id);
+        }
+      }
+    }
+
+    return people;
   } catch (err) {
     console.error("fetchPeople failed:", err);
     return [];
@@ -198,93 +258,104 @@ export default async function PeoplesSlugPage({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {people.map((person) => (
-                <Link
-                  key={person.id}
-                  href={`/staff/${person.slug}`}
-                  className="group bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-200"
-                >
-                  {/* Photo */}
-                  <div className="relative h-52 bg-gradient-to-br from-[#0a1931] to-[#122347] overflow-hidden">
-                    {resolveImage(person.photo) ? (
-                      <Image
-                        src={resolveImage(person.photo)}
-                        alt={person.name}
-                        fill
-                        className="object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-20 h-20 rounded-full bg-[#e85d14]/20 border-2 border-[#e85d14]/40 flex items-center justify-center">
-                          <i className="fas fa-user text-[#e85d14] text-3xl" />
+              {people.map((person) => {
+                const formerPeriod = extractFormerPeriod(person.subcategory);
+
+                return (
+                  <Link
+                    key={person.id}
+                    href={`/staff/${person.slug}`}
+                    className="group bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-200"
+                  >
+                    {/* Photo */}
+                    <div className="relative h-52 bg-gradient-to-br from-[#0a1931] to-[#122347] overflow-hidden">
+                      {resolveImage(person.photo) ? (
+                        <Image
+                          src={resolveImage(person.photo)}
+                          alt={person.name}
+                          fill
+                          className="object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-20 h-20 rounded-full bg-[#e85d14]/20 border-2 border-[#e85d14]/40 flex items-center justify-center">
+                            <i className="fas fa-user text-[#e85d14] text-3xl" />
+                          </div>
                         </div>
+                      )}
+                      <div className="absolute inset-0 bg-[#0a1628]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold bg-[#e85d14] px-4 py-2 rounded-full">
+                          View Profile
+                        </span>
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-[#0a1628]/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                      <span className="text-white text-xs font-semibold bg-[#e85d14] px-4 py-2 rounded-full">
-                        View Profile
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-5 text-center">
-                    <h4 className="font-bold text-[#0f2a5e] text-sm mb-1 line-clamp-1">
-                      {person.name}
-                    </h4>
-                    <p className="text-[#e85d14] text-xs font-semibold mb-3 line-clamp-1">
-                      {person.position}
-                    </p>
-
-                    {/* Contact row — these are now non-interactive indicators
-                        since the card itself is one big Link (a clickable
-                        <a> can't contain another clickable <a> reliably) */}
-                    <div className="flex items-center justify-center gap-2">
-                      {person.email && (
-                        <span
-                          className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs"
-                          title={person.email}
-                        >
-                          <i className="fas fa-envelope" />
-                        </span>
-                      )}
-                      {person.phone && (
-                        <span
-                          className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs"
-                          title={person.phone}
-                        >
-                          <i className="fas fa-phone" />
-                        </span>
-                      )}
-                      {person.linkedin && (
-                        <span
-                          className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs"
-                          title="LinkedIn"
-                        >
-                          <i className="fab fa-linkedin-in" />
-                        </span>
-                      )}
                     </div>
 
-                    {/* Dept / Unit badge */}
-                    {(person.departments?.[0] || person.units?.[0]) && (
-                      <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                        {person.departments?.[0] && (
-                          <span className="text-[10px] font-bold bg-[#0f2a5e]/8 text-[#0f2a5e] border border-[#0f2a5e]/15 px-2.5 py-1 rounded-full">
-                            {person.departments[0].short_code}
+                    {/* Info */}
+                    <div className="p-5 text-center">
+                      <h4 className="font-bold text-[#0f2a5e] text-sm mb-1 line-clamp-1">
+                        {person.name}
+                      </h4>
+                      <p className="text-[#e85d14] text-xs font-semibold line-clamp-1">
+                        {person.position}
+                      </p>
+
+                      {/* Former-director service period, when available */}
+                      {formerPeriod && (
+                        <p className="text-gray-400 text-[10px] font-medium mt-1 mb-2">
+                          {formerPeriod}
+                        </p>
+                      )}
+
+                      {/* Contact row — these are now non-interactive indicators
+                          since the card itself is one big Link (a clickable
+                          <a> can't contain another clickable <a> reliably) */}
+                      <div className={`flex items-center justify-center gap-2 ${formerPeriod ? "" : "mt-3"}`}>
+                        {person.email && (
+                          <span
+                            className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs"
+                            title={person.email}
+                          >
+                            <i className="fas fa-envelope" />
                           </span>
                         )}
-                        {person.units?.[0] && (
-                          <span className="text-[10px] font-bold bg-[#e85d14]/8 text-[#e85d14] border border-[#e85d14]/15 px-2.5 py-1 rounded-full">
-                            {person.units[0].short_code}
+                        {person.phone && (
+                          <span
+                            className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs"
+                            title={person.phone}
+                          >
+                            <i className="fas fa-phone" />
+                          </span>
+                        )}
+                        {person.linkedin && (
+                          <span
+                            className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs"
+                            title="LinkedIn"
+                          >
+                            <i className="fab fa-linkedin-in" />
                           </span>
                         )}
                       </div>
-                    )}
-                  </div>
-                </Link>
-              ))}
+
+                      {/* Dept / Unit badge */}
+                      {(person.departments?.[0] || person.units?.[0]) && (
+                        <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                          {person.departments?.[0] && (
+                            <span className="text-[10px] font-bold bg-[#0f2a5e]/8 text-[#0f2a5e] border border-[#0f2a5e]/15 px-2.5 py-1 rounded-full">
+                              {person.departments[0].short_code}
+                            </span>
+                          )}
+                          {person.units?.[0] && (
+                            <span className="text-[10px] font-bold bg-[#e85d14]/8 text-[#e85d14] border border-[#e85d14]/15 px-2.5 py-1 rounded-full">
+                              {person.units[0].short_code}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </>
         ) : (

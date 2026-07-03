@@ -25,6 +25,7 @@ import {
     Tractor,
     Bot,
     Loader2,
+    Clock,
 } from "lucide-react";
 import { FaLinkedin } from "react-icons/fa";
 
@@ -59,8 +60,8 @@ interface StaffMember {
     slug: string;
     name: string;
     position: string;
-    category: string;       // "academics" | "non-academic" | "director" | "head-of-division"
-    subcategory: string | null; // raw string from backend, e.g. "Former Director", "Admin Office"
+    category: string; // raw backend value: "academics" | "non-academic"
+    subcategory: string | null;
     image: string;
     email?: string;
     phone?: string;
@@ -91,22 +92,58 @@ const academicSubFilters = [
     { id: "MT", label: "MT", icon: Bot },
 ];
 
-// Fallback icons cycled for dynamically-discovered non-academic subcategories
 const dynamicIconPool = [Building2, DollarSign, BookOpen, Settings, Briefcase, Award];
 
-// Helper: normalize "Former Director" style subcategory into a director check
+// ── ROLE DETECTION ──
+function getSubcategorySegments(m: StaffMember): string[] {
+    return (m.subcategory ?? "")
+        .split(";")
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
+// STRICT: a segment must literally START with "director" / "former director".
 function isFormerDirector(m: StaffMember) {
-    return (
-        m.category === "director" && m.subcategory?.toLowerCase() === "former"
-    ) || m.subcategory?.toLowerCase() === "former director";
+    return getSubcategorySegments(m).some((seg) => /^former\s+director\b/i.test(seg));
 }
 
 function isCurrentDirector(m: StaffMember) {
     return (
-        (m.category === "director" &&
-            (m.subcategory?.toLowerCase() === "current" || !m.subcategory)) &&
+        getSubcategorySegments(m).some((seg) => /^director\b/i.test(seg)) &&
         !isFormerDirector(m)
     );
+}
+
+// Head of Division: no longer excludes current directors — someone can be
+// BOTH Director and Head of Department (e.g. Ramanan for ICT) and should
+// still show up under the "Head of Division" filter.
+function isHeadOfDivision(m: StaffMember) {
+    return (
+        getSubcategorySegments(m).some((seg) =>
+            /head of department|head of division/i.test(seg)
+        ) && !isFormerDirector(m)
+    );
+}
+
+// BROAD match — used ONLY for the "Former Directors" showcase section.
+// Includes anyone whose subcategory mentions "former" + "director"
+// anywhere (e.g. a current HOD who was historically an Acting Director).
+function isFormerDirectorMention(m: StaffMember) {
+    const sub = (m.subcategory ?? "").toLowerCase();
+    return sub.includes("former") && sub.includes("director");
+}
+
+function isFormerStaff(m: StaffMember) {
+    const sub = (m.subcategory ?? "").toLowerCase();
+    return sub.includes("former");
+}
+
+function extractDirectorDuration(m: StaffMember): string | null {
+    const sub = m.subcategory ?? "";
+    const match = sub.match(
+        /([A-Za-z]{3,9}\s+\d{4}|\d{1,2}-\d{1,2}-\d{4})\s*-\s*([A-Za-z]{3,9}\s+\d{4}|\d{1,2}-\d{1,2}-\d{4})/
+    );
+    return match ? `${match[1]} – ${match[2]}` : null;
 }
 
 function getBadge(member: StaffMember) {
@@ -122,7 +159,7 @@ function getBadge(member: StaffMember) {
             className: "bg-[#e85d14] text-white border border-[#e85d14]",
         };
     }
-    if (member.category === "head-of-division") {
+    if (isHeadOfDivision(member)) {
         return {
             label: "Head of Division",
             className: "bg-[#0b1730] text-white border border-[#0b1730]",
@@ -158,7 +195,6 @@ function normalizeStaffResponse(json: unknown): StaffMember[] {
             name: item.name ?? "",
             position: item.position ?? "",
             category: item.category ?? "",
-            // IMPORTANT: keep the raw backend value, don't default to "all"
             subcategory: item.subcategory ?? null,
             image: resolveImage(item.photo),
             email: item.email ?? undefined,
@@ -200,36 +236,37 @@ export default function StaffPage() {
         }
 
         fetchStaff();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
-    // ── DYNAMICALLY DERIVE NON-ACADEMIC SUB-FILTERS FROM ACTUAL DATA ──
-    // Instead of hardcoding "administrative" / "finance" / "assistant-librarian"
-    // (which never matched backend subcategory strings like "Admin Office"),
-    // we build the filter list from whatever subcategory values actually exist.
     const nonAcademicSubFilters = useMemo(() => {
-        const unique = Array.from(
-            new Set(
-                staffMembers
-                    .filter(
-                        (m) =>
-                            m.category === "non-academic" &&
-                            m.subcategory &&
-                            m.subcategory.trim() !== ""
-                    )
-                    .map((m) => m.subcategory as string)
-            )
-        ).sort();
+    const unique = Array.from(
+        new Set(
+            staffMembers
+                .filter(
+                    (m) =>
+                        m.category === "non-academic" &&
+                        m.subcategory &&
+                        m.subcategory.trim() !== "" &&
+                        // exclude "Former Director (...)" style subcategories —
+                        // those already appear in the Director tab's showcase
+                        !m.subcategory.toLowerCase().includes("former director")
+                )
+                .map((m) => m.subcategory as string)
+        )
+    ).sort();
 
-        return [
-            { id: "all", label: "All", icon: Users },
-            ...unique.map((sub, idx) => ({
-                id: sub, // use the EXACT backend string as the id, so matching is trivial
-                label: sub,
-                icon: dynamicIconPool[idx % dynamicIconPool.length],
-            })),
-        ];
-    }, [staffMembers]);
+    return [
+        { id: "all", label: "All", icon: Users },
+        ...unique.map((sub, idx) => ({
+            id: sub,
+            label: sub,
+            icon: dynamicIconPool[idx % dynamicIconPool.length],
+        })),
+    ];
+}, [staffMembers]);
 
     function selectCategory(id: string) {
         setActiveCategory(id);
@@ -237,31 +274,60 @@ export default function StaffPage() {
     }
 
     // ── FILTER LOGIC ──
+    // "director" tab now checks STRICT current-director only — historical
+    // "Acting Director" mentions inside an HOD's subcategory no longer
+    // pull them into the main Director grid.
+    // "academics"/"non-academic" checks the raw backend category, so ALL
+    // department members show regardless of their director/HOD status.
     const filtered = staffMembers.filter((m) => {
-        // Category filter
-        if (activeCategory !== "all" && m.category !== activeCategory) return false;
+        if (activeCategory === "all") return true;
 
-        // Sub-filter for academics → match by departments[].short_code
-        if (activeCategory === "academics" && activeSub !== "all") {
-            const hasDept = m.departments.some(
-                (d) => d.short_code.toUpperCase() === activeSub.toUpperCase()
-            );
-            if (!hasDept) return false;
+        if (activeCategory === "director") {
+            return isCurrentDirector(m);
         }
 
-        // Sub-filter for non-academic → match exact subcategory string from backend
-        if (activeCategory === "non-academic" && activeSub !== "all") {
-            if (m.subcategory !== activeSub) return false;
+        if (activeCategory === "head-of-division") {
+            return isHeadOfDivision(m);
+        }
+
+        if (activeCategory === "academics") {
+            if (m.category !== "academics") return false;
+            if (activeSub !== "all") {
+                const hasDept = m.departments.some(
+                    (d) => d.short_code.toUpperCase() === activeSub.toUpperCase()
+                );
+                if (!hasDept) return false;
+            }
+            return true;
+        }
+
+        if (activeCategory === "non-academic") {
+            if (m.category !== "non-academic") return false;
+            if (activeSub !== "all" && m.subcategory !== activeSub) return false;
+            return true;
         }
 
         return true;
     });
 
-    // Director detection now handles the case where "Former Director" arrives
-    // as category: "non-academic", subcategory: "Former Director" (as seen in the API sample)
     const currentDirectors = filtered.filter(isCurrentDirector);
-    const formerDirectors = filtered.filter(isFormerDirector);
-    const rest = filtered.filter((m) => !isCurrentDirector(m) && !isFormerDirector(m));
+
+    const rest = filtered
+        .filter((m) => !isCurrentDirector(m) && !isFormerDirector(m))
+        .sort((a, b) => {
+            const aFormer = isFormerStaff(a) ? 1 : 0;
+            const bFormer = isFormerStaff(b) ? 1 : 0;
+            return aFormer - bFormer;
+        });
+
+    // Former Directors showcase: broad match against the FULL staff list
+    // (not the tab-filtered one), shown only on "All Staff" and "Director"
+    // tabs — never inside a department sub-filter view.
+    const showFormerDirectorsShowcase =
+        activeCategory === "all" || activeCategory === "director";
+    const formerDirectorsShowcase = showFormerDirectorsShowcase
+        ? staffMembers.filter(isFormerDirectorMention)
+        : [];
 
     const showSubFilters =
         activeCategory === "academics" || activeCategory === "non-academic";
@@ -393,8 +459,8 @@ export default function StaffPage() {
                         </div>
                     )}
 
-                    {/* Former Directors */}
-                    {!loading && !error && formerDirectors.length > 0 && (
+                    {/* Former Directors Showcase */}
+                    {!loading && !error && formerDirectorsShowcase.length > 0 && (
                         <>
                             <div className="flex items-center gap-3 mt-12 mb-6">
                                 <History className="text-[#e85d14]" size={20} />
@@ -404,8 +470,13 @@ export default function StaffPage() {
                                 <div className="flex-1 h-px bg-gray-200" />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {formerDirectors.map((member) => (
-                                    <StaffCard key={member.id} member={member} />
+                                {formerDirectorsShowcase.map((member) => (
+                                    <StaffCard
+                                        key={`former-${member.id}`}
+                                        member={member}
+                                        forceLabel="Former Director"
+                                        duration={extractDirectorDuration(member)}
+                                    />
                                 ))}
                             </div>
                         </>
@@ -422,7 +493,15 @@ export default function StaffPage() {
     );
 }
 
-function StaffCard({ member }: { member: StaffMember }) {
+function StaffCard({
+    member,
+    forceLabel,
+    duration,
+}: {
+    member: StaffMember;
+    forceLabel?: string;
+    duration?: string | null;
+}) {
     const badge = getBadge(member);
     const router = useRouter();
 
@@ -463,7 +542,7 @@ function StaffCard({ member }: { member: StaffMember }) {
                             </a>
                         )}
                         {member.linkedin && (
-                            <a
+                          <a  
                                 href={member.linkedin}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -481,9 +560,21 @@ function StaffCard({ member }: { member: StaffMember }) {
                     {member.name}
                 </h3>
                 <p className="text-[13px] text-[#5a6380] mb-3">{member.position}</p>
-                <span className={`text-[11px] font-semibold px-3 py-1 rounded-full ${badge.className}`}>
-                    {badge.label}
+                <span
+                    className={`inline-block text-[11px] font-semibold px-3 py-1 rounded-full ${
+                        forceLabel
+                            ? "bg-[#0b1730]/5 text-[#5a6380] border border-gray-200"
+                            : badge.className
+                    }`}
+                >
+                    {forceLabel ?? badge.label}
                 </span>
+                {duration && (
+                    <div className="flex items-center justify-center gap-1.5 text-[12px] text-[#5a6380] mt-2">
+                        <Clock size={12} />
+                        <span>{duration}</span>
+                    </div>
+                )}
             </div>
         </div>
     );

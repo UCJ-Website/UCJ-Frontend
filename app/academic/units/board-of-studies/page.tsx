@@ -181,7 +181,89 @@ export default async function BoardOfStudiesPage() {
             <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-5">
               Staff Members
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Table (desktop / tablet) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-[#e5eaf3]">
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3 w-[60px]">
+                      Photo
+                    </th>
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
+                      Name
+                    </th>
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
+                      Position
+                    </th>
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
+                      Email
+                    </th>
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
+                      Phone
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unit.staff.map((s) => {
+                    const photoUrl = imageUrl(s.photo ?? null);
+                    return (
+                      <tr
+                        key={s.id}
+                        className="border-b border-[#f0f4fb] hover:bg-[#f8faff] transition-colors"
+                      >
+                        <td className="py-3 px-3">
+                          <div className="w-[40px] h-[40px] rounded-full bg-[#dbeafe] text-[#2563b0] flex items-center justify-center font-bold text-[14px] overflow-hidden">
+                            {photoUrl ? (
+                              <img
+                                src={photoUrl}
+                                alt={s.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              s.name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-[#1e3a5f] text-[14px]">
+                          {s.name}
+                        </td>
+                        <td className="py-3 px-3 text-[13px] text-[#6b7280]">
+                          {s.position ?? "—"}
+                        </td>
+                        <td className="py-3 px-3 text-[13px]">
+                          {s.email ? (
+                            <a
+                              href={`mailto:${s.email}`}
+                              className="text-[#2563b0] hover:underline"
+                            >
+                              {s.email}
+                            </a>
+                          ) : (
+                            <span className="text-[#9ca3af]">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-[13px]">
+                          {s.phone ? (
+                            <a
+                              href={`tel:${s.phone}`}
+                              className="text-[#2563b0] hover:underline"
+                            >
+                              {s.phone}
+                            </a>
+                          ) : (
+                            <span className="text-[#9ca3af]">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Stacked cards (mobile only) */}
+            <div className="sm:hidden flex flex-col gap-3">
               {unit.staff.map((s) => {
                 const photoUrl = imageUrl(s.photo ?? null);
                 return (

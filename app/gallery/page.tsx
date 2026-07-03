@@ -175,9 +175,15 @@ function AlbumCard({ album, onClick }: { album: Album; onClick: () => void }) {
             {FP_MONTH_SHORT[album.month]} {album.year}
           </span>
         </div>
-        <div className="text-[12px] font-semibold text-[#0b1730] leading-snug line-clamp-1">{album.title}</div>
+
+        {/* Title */}
+        <div className="text-[12px] font-semibold text-[#0b1730] leading-snug">{album.title}</div>
+
+        {/* Full description — no truncation, wraps completely below the title */}
         {album.description && (
-          <div className="text-[10px] text-gray-400 line-clamp-2 leading-relaxed">{album.description}</div>
+          <div className="text-[10px] text-gray-500 leading-relaxed whitespace-pre-line break-words">
+            {album.description}
+          </div>
         )}
       </div>
     </div>
@@ -226,7 +232,12 @@ function AlbumLightbox({ album, onClose }: { album: AlbumDetail; onClose: () => 
           )}
           <div>
             <div className="text-white font-bold text-[15px] leading-tight">{album.title}</div>
-            <div className="text-white/40 text-[11px] flex items-center gap-2 mt-0.5">
+            {album.description && (
+              <div className="text-white/50 text-[11px] leading-relaxed mt-1 max-w-[520px] whitespace-pre-line break-words">
+                {album.description}
+              </div>
+            )}
+            <div className="text-white/40 text-[11px] flex items-center gap-2 mt-1.5 flex-wrap">
               <span>{pal.icon} {pal.label}</span>
               <span className="w-1 h-1 rounded-full bg-white/20 inline-block"></span>
               <span>{FP_MONTH_FULL[album.month]} {album.year}</span>
@@ -243,7 +254,7 @@ function AlbumLightbox({ album, onClose }: { album: AlbumDetail; onClose: () => 
         </div>
         <button
           onClick={onClose}
-          className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center hover:bg-[#e85d14] transition-colors"
+          className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center hover:bg-[#e85d14] transition-colors shrink-0"
         >
           <i className="fas fa-times text-[13px]"></i>
         </button>

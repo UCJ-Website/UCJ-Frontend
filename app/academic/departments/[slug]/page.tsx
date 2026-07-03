@@ -22,6 +22,7 @@ interface StaffMember {
   id: number;
   name: string;
   position?: string | null;
+  subcategory?: string | null;
   email?: string | null;
   phone?: string | null;
   photo?: string | null;
@@ -36,7 +37,7 @@ interface CourseSummary {
   level?: string;
   duration?: string;
   description?: string | null;
-   department_id?: number | null;  // ← add this
+  department_id?: number | null;
 }
 
 interface GalleryItem {
@@ -79,6 +80,14 @@ function getIcon(name: string): string {
   if (lower.includes("interdisciplinary")) return "fa-compass";
   if (lower.includes("cosmetology")) return "fa-spa";
   return "fa-graduation-cap";
+}
+
+function sortStaffFormerLast(staff: StaffMember[]): StaffMember[] {
+  return [...staff].sort((a, b) => {
+    const aFormer = a.subcategory?.toLowerCase().includes("former") ? 1 : 0;
+    const bFormer = b.subcategory?.toLowerCase().includes("former") ? 1 : 0;
+    return aFormer - bFormer;
+  });
 }
 
 export function imageUrl(path: string | null): string | null {
@@ -151,6 +160,7 @@ export default async function DepartmentDetailPage({
     : "bg-[#f0fdf4] text-[#15803d]";
   const icon = getIcon(dept.name);
   const bannerUrl = imageUrl(dept.banner_image);
+  const sortedStaff = sortStaffFormerLast(dept.staff ?? []);
 
   return (
     <>
@@ -212,7 +222,7 @@ export default async function DepartmentDetailPage({
 
         {/* Tabs Section */}
         <DepartmentTabs
-          staff={dept.staff ?? []}
+          staff={sortedStaff}
           courses={courses}
           gallery={dept.gallery ?? []}
           research={research}

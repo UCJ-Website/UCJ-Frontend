@@ -8,6 +8,14 @@ const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
 const API_BASE = `${ORIGIN}/api`;
 
+// How many news items to request per page from the backend.
+// Pagination should only appear once total items exceed this number.
+// NOTE: the Laravel controller's paginate() call must use this same
+// number (or read it from the `per_page` query param) — otherwise the
+// backend's own default page size wins and pagination shows up too early,
+// same issue we hit on the /events page.
+const PER_PAGE = 10;
+
 function resolveImage(path: string | null | undefined): string {
   if (!path) return "";
   if (/^https?:\/\//i.test(path)) return path;
@@ -69,7 +77,7 @@ export default function LatestNewsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("all");
 
-  // --- pagination (backend-driven, /api/news?page=N) --------------------
+  // --- pagination (backend-driven, /api/news?page=N&per_page=N) ---------
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [totalNews, setTotalNews] = useState(0);
@@ -117,9 +125,9 @@ export default function LatestNewsPage() {
   }, []);
 
   useEffect(() => {
-    // /api/news?page=N -> { data: { allNews: { data: [...], current_page, last_page, total } } }
+    // /api/news?page=N&per_page=10 -> { data: { allNews: { data: [...], current_page, last_page, total } } }
     setLoading(true);
-    fetch(`${API_BASE}/news?page=${page}`)
+    fetch(`${API_BASE}/news?page=${page}&per_page=${PER_PAGE}`)
       .then((r) => r.json())
       .then((payload) => {
         const newsBlock = payload?.data?.allNews ?? {};

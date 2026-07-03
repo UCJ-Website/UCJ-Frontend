@@ -1,7 +1,7 @@
 import Link from "next/link";
 import FormClient from "./FormClient";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export interface StudentForm {
   id: number;
@@ -28,7 +28,14 @@ async function getAllForms(): Promise<StudentForm[]> {
     const res = await fetch(`${API_BASE}/api/students/forms?page=1`, {
       next: { revalidate: 3600 },
     });
-    if (!res.ok) return [];
+
+    if (!res.ok) {
+      console.error(
+        `❌ Student forms fetch failed: ${res.status} ${res.statusText} — URL: ${API_BASE}/api/students/forms?page=1`
+      );
+      return [];
+    }
+
     const json: ApiResponse = await res.json();
     const firstPage = json?.data?.forms?.data ?? [];
     const lastPage = json?.data?.forms?.last_page ?? 1;
@@ -41,11 +48,15 @@ async function getAllForms(): Promise<StudentForm[]> {
       })
         .then((r) => r.json())
         .then((d: ApiResponse) => d?.data?.forms?.data ?? [])
-        .catch(() => [] as StudentForm[])
+        .catch((err) => {
+          console.error("❌ Student forms page fetch failed:", err);
+          return [] as StudentForm[];
+        })
     );
     const rest = await Promise.all(promises);
     return [...firstPage, ...rest.flat()];
-  } catch {
+  } catch (err) {
+    console.error(`❌ Student forms fetch threw an error — URL: ${API_BASE}/api/students/forms`, err);
     return [];
   }
 }

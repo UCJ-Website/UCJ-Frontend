@@ -5,8 +5,16 @@ import type { StudentForm } from "./page";
 
 const STORAGE_BASE = process.env.NEXT_PUBLIC_STORAGE_URL ?? "http://localhost:8000";
 
+function isAbsoluteUrl(path: string) {
+  return /^https?:\/\//i.test(path);
+}
+
 function buildFileUrl(filePath: string) {
-  // file_path from API looks like: "storage/student-forms/xyz.pdf"
+  // Some forms store a full external URL (e.g. ucj.ac.lk PDFs),
+  // others store a relative local path like "storage/student-forms/xyz.pdf"
+  if (isAbsoluteUrl(filePath)) {
+    return filePath;
+  }
   const cleanPath = filePath.replace(/^\/+/, "");
   return `${STORAGE_BASE}/${cleanPath}`;
 }
@@ -16,6 +24,15 @@ export default function FormClient({ forms }: { forms: StudentForm[] }) {
 
   async function handleDownload(form: StudentForm) {
     const url = buildFileUrl(form.file_path);
+    const filename = form.file_path.split("/").pop() || `${form.slug || form.title}.pdf`;
+
+    // External (cross-origin) PDFs usually can't be fetched as a blob due to
+    // CORS, so just open them directly — the browser/PDF viewer handles it.
+    if (isAbsoluteUrl(form.file_path)) {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
     console.log("🔍 Fetching file from:", url);
     setDownloadingId(form.id);
     try {
@@ -24,7 +41,6 @@ export default function FormClient({ forms }: { forms: StudentForm[] }) {
       const blob = await res.blob();
 
       const blobUrl = URL.createObjectURL(blob);
-      const filename = form.file_path.split("/").pop() || `${form.slug || form.title}.pdf`;
 
       const a = document.createElement("a");
       a.href = blobUrl;

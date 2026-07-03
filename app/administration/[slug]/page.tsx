@@ -11,7 +11,14 @@ const management: Record<string, {
   responsibilities: string[];
   external_url: string;
   external_label: string;
-  positionKeyword: string;
+  // Exact `subcategory` values to match — these are the same values the
+  // /staff page's "Non Academic" sub-filter chips are built from (e.g.
+  // "Finance Branch", "Administrative Branch"). Guessing via keywords on
+  // `position` or a `units[].short_code` pulled unrelated staff in
+  // (an English Instructor, a broken "Assistant Bursar" placeholder
+  // record) because those fields don't reliably say what office someone
+  // belongs to — subcategory does, so match on it exactly.
+  subcategories: string[];
 }> = {
   "director-office": {
     icon: "fa-landmark",
@@ -35,7 +42,12 @@ const management: Record<string, {
     ],
     external_url: "https://",
     external_label: "Visit University collge of Jaffna",
-    positionKeyword: "Director",
+    // Director isn't a plain subcategory match — a staff member can carry
+    // "Director" alongside other roles inside a ";"-separated subcategory
+    // string (e.g. "Head of Department; Director"). Handled separately
+    // below via isCurrentDirector()/isFormerDirector(), same logic as
+    // the main /staff page.
+    subcategories: [],
   },
   "admin-office": {
     icon: "fa-pen-nib",
@@ -57,9 +69,9 @@ const management: Record<string, {
       "Staff HR coordination",
       "Institutional documentation",
     ],
-    external_url: "http://www.jfn.ac.lk/index.php/unit/office-of-the-registrar/",
+    external_url: "",
     external_label: "Visit Registrar's Office",
-    positionKeyword: "Admin Office",
+    subcategories: ["Administrative Branch"],
   },
   "finance": {
     icon: "fa-coins",
@@ -83,7 +95,7 @@ const management: Record<string, {
     ],
     external_url: "https://",
     external_label: "Visit Bursar's Office",
-    positionKeyword: "Finance",
+    subcategories: ["Finance Branch"],
   },
 };
 
@@ -93,9 +105,9 @@ type Staff = {
   name: string;
   position: string;
   category: string;
-  subcategory: string;
+  subcategory: string | null;
   photo: string | null;
-  email: string;
+  email: string | null;
   phone: string | null;
   office: string | null;
   linkedin: string | null;
@@ -106,20 +118,100 @@ type Staff = {
   units: { id: number; name: string; short_code: string }[];
 };
 
-async function getStaffForOffice(positionKeyword: string): Promise<Staff[]> {
+// Pulls a trailing "Mon YYYY - Mon YYYY" style range out of a subcategory
+// string like "Head of Department (Former Acting Director / CEO, Nov 2020
+// - Nov 2021)". Some former directors never got `position` set to
+// "Former Director" — they only have this parenthetical note in
+// `subcategory` while `position` still shows their regular title (e.g.
+// "Senior Lecturer"). This lets the UI still surface *when* they served.
+function extractFormerPeriod(subcategory: string | null): string | null {
+  if (!subcategory) return null;
+  const bracket = subcategory.match(/\(([^)]+)\)/);
+  if (!bracket) return null;
+
+  const inner = bracket[1];
+  const parts = inner.split(",");
+  const last = parts[parts.length - 1].trim();
+
+  return /\d/.test(last) ? last : null;
+}
+
+// The backend's `per_page` param on /api/staffs is ignored/capped — it
+// always comes back paginated at 10 per page (see `last_page` in the
+// response) no matter what we send. Requesting a single "big" page was
+// silently truncating results to the first 10 staff, which is why
+// Finance/Admin Office (and anyone past page 1) never showed up. Walk
+// every page and concatenate instead of trusting per_page to do it.
+async function getAllStaff(): Promise<Staff[]> {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/staffs?per_page=100", {
+    const first = await fetch("http://127.0.0.1:8000/api/staffs?page=1", {
       cache: "no-store",
     });
-    if (!res.ok) return [];
-    const json = await res.json();
-    const all: Staff[] = json?.data?.staffs?.data ?? [];
-    return all.filter((s) =>
-      s.position.toLowerCase().includes(positionKeyword.toLowerCase())
-    );
+    if (!first.ok) return [];
+    const firstJson = await first.json();
+    const firstPage = firstJson?.data?.staffs;
+    let all: Staff[] = firstPage?.data ?? [];
+    const lastPage: number = firstPage?.last_page ?? 1;
+
+    if (lastPage > 1) {
+      const remaining = await Promise.all(
+        Array.from({ length: lastPage - 1 }, (_, i) => i + 2).map((page) =>
+          fetch(`http://127.0.0.1:8000/api/staffs?page=${page}`, { cache: "no-store" })
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null)
+        )
+      );
+      for (const json of remaining) {
+        const pageStaff: Staff[] = json?.data?.staffs?.data ?? [];
+        all = all.concat(pageStaff);
+      }
+    }
+
+    return all;
   } catch {
     return [];
   }
+}
+
+// Splits a ";"-separated subcategory string into trimmed segments — same
+// convention used on the /staff page (a person can be tagged with more
+// than one role, e.g. "Head of Department; Director").
+function getSubcategorySegments(s: Staff): string[] {
+  return (s.subcategory ?? "")
+    .split(";")
+    .map((seg) => seg.trim())
+    .filter(Boolean);
+}
+
+// STRICT: a segment must literally start with "former director".
+function isFormerDirector(s: Staff): boolean {
+  return getSubcategorySegments(s).some((seg) => /^former\s+director\b/i.test(seg));
+}
+
+// STRICT: a segment must literally start with "director" and not be a
+// former-director segment.
+function isCurrentDirector(s: Staff): boolean {
+  return (
+    getSubcategorySegments(s).some((seg) => /^director\b/i.test(seg)) && !isFormerDirector(s)
+  );
+}
+
+// BROAD match — anyone whose subcategory mentions "former" + "director"
+// anywhere, including a parenthetical note like "Head of Department
+// (Former Acting Director / CEO, Nov 2020 - Nov 2021)". Used only for
+// the Former Directors showcase section.
+function isFormerDirectorMention(s: Staff): boolean {
+  const sub = (s.subcategory ?? "").toLowerCase();
+  return sub.includes("former") && sub.includes("director");
+}
+
+// Office staff for admin-office / finance — exact match against the same
+// `subcategory` values the /staff page's Non Academic sub-filter chips
+// use (e.g. "Finance Branch", "Administrative Branch"). Exact match
+// avoids accidentally pulling in unrelated staff the way keyword/unit
+// guessing did.
+function filterBySubcategory(all: Staff[], subcategories: string[]): Staff[] {
+  return all.filter((s) => subcategories.includes((s.subcategory ?? "").trim()));
 }
 
 export default async function AdminSlugPage({
@@ -131,7 +223,12 @@ export default async function AdminSlugPage({
   const item = management[slug];
   if (!item) notFound();
 
-  const staff = await getStaffForOffice(item.positionKeyword);
+  const allStaff = await getAllStaff();
+  const staff =
+    slug === "director-office"
+      ? allStaff.filter(isCurrentDirector)
+      : filterBySubcategory(allStaff, item.subcategories);
+  const formerDirectors = slug === "director-office" ? allStaff.filter(isFormerDirectorMention) : [];
 
   return (
     <>
@@ -238,13 +335,13 @@ export default async function AdminSlugPage({
                   className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                 >
                   {/* Photo */}
-                  <div className="bg-gradient-to-br from-[#0a1931] to-[#122347] h-36 flex items-center justify-center relative">
+                  <div className="bg-gradient-to-br from-[#0a1931] to-[#122347] h-56 w-full flex items-center justify-center relative p-3">
                     {s.photo ? (
                       <Image
                         src={s.photo}
                         alt={s.name}
                         fill
-                        className="object-cover object-top"
+                        className="object-contain"
                         sizes="(max-width: 768px) 100vw, 25vw"
                       />
                     ) : (
@@ -310,6 +407,78 @@ export default async function AdminSlugPage({
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── FORMER DIRECTORS SECTION (director-office only) ── */}
+        {slug === "director-office" && formerDirectors.length > 0 && (
+          <section className="mt-14">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-1 h-6 bg-gray-300 rounded-full" />
+              <h3 className="text-xl font-bold text-[#0f2a5e]">Former Directors</h3>
+              <span className="ml-auto text-xs font-semibold bg-gray-100 text-gray-500 px-3 py-1 rounded-full">
+                {formerDirectors.length} {formerDirectors.length === 1 ? "Member" : "Members"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              {formerDirectors.map((s) => {
+                const formerPeriod = extractFormerPeriod(s.subcategory);
+                return (
+                  <div
+                    key={s.id}
+                    className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                  >
+                    {/* Photo */}
+                    <div className="bg-gradient-to-br from-gray-500 to-gray-700 h-56 flex items-center justify-center relative p-3">
+                      {s.photo ? (
+                        <Image
+                          src={s.photo}
+                          alt={s.name}
+                          fill
+                          className="object-contain grayscale-[30%]"
+                          sizes="(max-width: 768px) 100vw, 25vw"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/30 flex items-center justify-center">
+                          <i className="fas fa-user text-white/70 text-3xl" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-5">
+                      <h4 className="font-bold text-[#0f2a5e] text-base mb-0.5 truncate">{s.name}</h4>
+                      <p className="text-gray-400 text-xs font-semibold truncate">
+                        {isFormerDirector(s) ? "Former Director" : "Former Acting Director / CEO"}
+                      </p>
+                      {formerPeriod && (
+                        <p className="text-gray-400 text-[11px] font-medium mt-1 mb-3">{formerPeriod}</p>
+                      )}
+
+                      <div className="space-y-1.5 text-xs text-gray-500">
+                        {s.email && (
+                          <div className="flex items-center gap-2">
+                            <i className="fas fa-envelope text-gray-400 w-3 shrink-0" />
+                            <a href={`mailto:${s.email}`} className="hover:text-[#e85d14] truncate transition-colors">
+                              {s.email}
+                            </a>
+                          </div>
+                        )}
+                        {s.phone && (
+                          <div className="flex items-center gap-2">
+                            <i className="fas fa-phone text-gray-400 w-3 shrink-0" />
+                            <a href={`tel:${s.phone}`} className="hover:text-[#e85d14] transition-colors">
+                              {s.phone}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
