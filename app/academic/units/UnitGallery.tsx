@@ -1,6 +1,30 @@
-"use client";
+// app/academic/units/board-of-studies/page.tsx
 
-import { useState } from "react";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+
+interface StaffMember {
+  id: number;
+  name: string;
+  position?: string | null;
+  role_type?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  photo?: string | null;
+}
+
+interface CourseSummary {
+  id: number;
+  title: string;
+  short_code?: string;
+  slug: string;
+  image?: string | null;
+  level?: string;
+  duration?: string;
+  description?: string | null;
+}
 
 interface GalleryItem {
   id: number;
@@ -12,106 +36,347 @@ interface GalleryItem {
   month: string | null;
 }
 
-interface Props {
+interface UnitDetail {
+  id: number;
+  slug: string;
+  name: string;
+  short_code: string;
+  short_description: string;
+  description: string | null;
+  is_unit: boolean;
+  is_engineering: boolean;
+  logo: string | null;
+  banner_image: string | null;
+  vision: string | null;
+  mission: string | null;
+  staff: StaffMember[];
+  courses: CourseSummary[];
+  researches: unknown[];
   gallery: GalleryItem[];
 }
 
-export default function UnitGallery({ gallery }: Props) {
-  const [lightbox, setLightbox] = useState<GalleryItem | null>(null);
 
-  if (!gallery || gallery.length === 0) return null;
+const BOARD_OF_STUDIES_ORDER = [
+  "Mr. M. Ramanan",
+  "Dr. B. Ketheesan",
+  "Dr. K. Thabotharan",
+  "Miss K. Tharsana",
+  "Eng. Mr. N. Ravindran",
+  "Dr. K. Shanmuganathan",
+  "Miss G. Menisha",
+  "Mr. V. Hiroshaan",
+  "Eng. K. Kamalaruban",
+  "Miss. M. Priyatharsini",
+  "Mrs. P. Karthiha",
+  "Dr. (Mrs.) T. E. Nirmalan",
+  "Eng. Mr. R. Gobalarajah",
+  "Eng. Mrs. T. Shobith",
+  "Eng. S. Thenusa",
+  "Eng. Mr. N. Siyamsanker",
+  "Miss. M. Pugalini",
+  "Miss. J. Bavithira",
+  "Miss S. Kalina",
+  "Mrs. V. Sivagowry",
+  "Ms. V. Sandavi",
+  "Miss S. Vasuki",
+  "Mrs. P. Thanuja",
+  "Mr. R. Heshanthan",
+  "Eng. Mr. S. Paheerathan",
+];
+
+function normalizePersonName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sortStaffByOfficialOrder(staff: StaffMember[]): StaffMember[] {
+  const officialOrder = new Map(
+    BOARD_OF_STUDIES_ORDER.map((name, index) => [
+      normalizePersonName(name),
+      index,
+    ]),
+  );
+
+  return [...staff].sort((a, b) => {
+    const aIndex =
+      officialOrder.get(normalizePersonName(a.name)) ??
+      Number.MAX_SAFE_INTEGER;
+    const bIndex =
+      officialOrder.get(normalizePersonName(b.name)) ??
+      Number.MAX_SAFE_INTEGER;
+
+    if (aIndex !== bIndex) return aIndex - bIndex;
+
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function imageUrl(path: string | null): string | null {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${API_BASE}/${path.replace(/^\/+/, "")}`;
+}
+
+async function getBoardOfStudies(): Promise<UnitDetail | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/departments/board-of-studies`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data?.department ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function BoardOfStudiesPage() {
+  const unit = await getBoardOfStudies();
+  if (!unit) return notFound();
+
+  const orderedStaff = sortStaffByOfficialOrder(unit.staff ?? []);
+
+  const bannerUrl = imageUrl(unit.banner_image);
+  const logoUrl = imageUrl(unit.logo);
 
   return (
     <>
-      <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
-        <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-5">
-          Gallery
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {gallery.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setLightbox(item)}
-              className="group relative aspect-[4/3] rounded-xl overflow-hidden border border-[#e5eaf3] focus:outline-none"
-            >
+      {/* Banner */}
+      <div
+        className="relative text-center py-16 px-6 overflow-hidden"
+        style={
+          bannerUrl
+            ? {
+                backgroundImage: `linear-gradient(135deg, rgba(15,42,94,0.88) 0%, rgba(26,74,138,0.82) 60%, rgba(37,99,176,0.80) 100%), url(${bannerUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : {
+                background:
+                  "linear-gradient(135deg, #0f2a5e 0%, #1a4a8a 60%, #2563b0 100%)",
+              }
+        }
+      >
+        <div className="relative z-10">
+          <div className="text-[13px] text-white/65 mb-3">
+            <Link href="/" className="hover:text-white transition-colors">
+              Home
+            </Link>
+            <span className="mx-1.5">›</span>
+            <Link href="/academic" className="hover:text-white transition-colors">
+              Academic
+            </Link>
+            <span className="mx-1.5">›</span>
+            <span className="text-white">{unit.name}</span>
+          </div>
+
+          <div className="w-[60px] h-[60px] rounded-2xl bg-white/10 text-white flex items-center justify-center text-[26px] mx-auto mb-4 overflow-hidden">
+            {logoUrl ? (
               <img
-                src={item.cover_image}
-                alt={item.title ?? "Gallery image"}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                src={logoUrl}
+                alt={unit.name}
+                className="w-full h-full object-contain p-1"
               />
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-[#0f2a5e]/0 group-hover:bg-[#0f2a5e]/55 transition-all duration-300 flex flex-col items-center justify-center gap-1 p-3">
-                <i className="fas fa-expand text-white text-[18px] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></i>
-                {item.title && (
-                  <span className="text-white text-[11px] font-semibold text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 line-clamp-2">
-                    {item.title}
-                  </span>
-                )}
-              </div>
-              {/* Year badge */}
-              {item.year && (
-                <span className="absolute top-2 left-2 bg-black/50 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                  {item.year}
-                </span>
-              )}
-            </button>
-          ))}
+            ) : (
+              <i className="fas fa-book-open"></i>
+            )}
+          </div>
+
+          <span className="inline-block bg-white/15 text-white text-[11px] font-bold px-3 py-1 rounded-full tracking-widest uppercase mb-3">
+            {unit.short_code}
+          </span>
+
+          <h1
+            className="text-white font-bold"
+            style={{ fontSize: "clamp(24px,4vw,38px)" }}
+          >
+            {unit.name}
+          </h1>
+          {unit.short_description && (
+            <p className="text-white/70 text-[14px] max-w-[500px] mx-auto mt-3 leading-[1.6]">
+              {unit.short_description}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Lightbox */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-[999] bg-black/85 flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <div
-            className="relative bg-white rounded-2xl overflow-hidden max-w-[700px] w-full shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close */}
-            <button
-              onClick={() => setLightbox(null)}
-              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
-            >
-              <i className="fas fa-times text-[13px]"></i>
-            </button>
+      {/* Content */}
+      <main className="max-w-[1300px] mx-auto px-6 py-16">
+        {/* Overview */}
+        <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
+          <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-3">
+            Description
+          </div>
+          <p className="text-[#4b5563] text-[15px] leading-7">
+            {unit.description ?? unit.short_description}
+          </p>
+          
+        </div>
 
-            {/* Image */}
-            <img
-              src={lightbox.cover_image}
-              alt={lightbox.title ?? "Gallery image"}
-              className="w-full max-h-[420px] object-cover"
-            />
+        {/* Vision */}
+        {unit.vision && (
+          <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
+            <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-3">
+              Vision
+            </div>
+            <p className="text-[#4b5563] text-[15px] leading-7">{unit.vision}</p>
+          </div>
+        )}
 
-            {/* Info */}
-            <div className="p-5">
-              {lightbox.title && (
-                <h3 className="font-bold text-[#1e3a5f] text-[16px] mb-1">
-                  {lightbox.title}
-                </h3>
-              )}
-              <div className="flex items-center gap-3 flex-wrap mb-2">
-                {lightbox.category && (
-                  <span className="bg-[#eff6ff] text-[#2563b0] text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
-                    {lightbox.category}
-                  </span>
-                )}
-                {(lightbox.month || lightbox.year) && (
-                  <span className="text-[12px] text-[#6b7280]">
-                    {[lightbox.month, lightbox.year].filter(Boolean).join(" ")}
-                  </span>
-                )}
-              </div>
-              {lightbox.description && (
-                <p className="text-[#4b5563] text-[13px] leading-6">
-                  {lightbox.description}
-                </p>
-              )}
+        {/* Mission */}
+        {unit.mission && (
+          <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
+            <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-3">
+              Mission
+            </div>
+            <p className="text-[#4b5563] text-[15px] leading-7">{unit.mission}</p>
+          </div>
+        )}
+
+        {/* Staff */}
+        {orderedStaff.length > 0 && (
+          <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
+            <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-5">
+              Staff Members
+            </div>
+
+            {/* Table (desktop / tablet) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-[#e5eaf3]">
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3 w-[60px]">
+                      Photo
+                    </th>
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
+                      Name
+                    </th>
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
+                      Designation
+                    </th>
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
+                      Role
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderedStaff.map((s) => {
+                    const photoUrl = imageUrl(s.photo ?? null);
+                    return (
+                      <tr
+                        key={s.id}
+                        className="border-b border-[#f0f4fb] hover:bg-[#f8faff] transition-colors"
+                      >
+                        <td className="py-3 px-3">
+                          <div className="w-[40px] h-[40px] rounded-full bg-[#dbeafe] text-[#2563b0] flex items-center justify-center font-bold text-[14px] overflow-hidden">
+                            {photoUrl ? (
+                              <img
+                                src={photoUrl}
+                                alt={s.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              s.name.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-[#1e3a5f] text-[14px]">
+                          {s.name}
+                        </td>
+                        <td className="py-3 px-3 text-[13px] text-[#6b7280]">
+                          {s.position ?? "—"}
+                        </td>
+                        <td className="py-3 px-3 text-[13px] font-medium text-[#2563b0]">
+                          {s.role_type ?? "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Stacked cards (mobile only) */}
+            <div className="sm:hidden flex flex-col gap-3">
+              {orderedStaff.map((s) => {
+                const photoUrl = imageUrl(s.photo ?? null);
+                return (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-4 p-4 rounded-xl border border-[#f0f4fb] bg-[#f8faff]"
+                  >
+                    <div className="w-[48px] h-[48px] rounded-full bg-[#dbeafe] text-[#2563b0] flex items-center justify-center font-bold text-[16px] shrink-0 overflow-hidden">
+                      {photoUrl ? (
+                        <img
+                          src={photoUrl}
+                          alt={s.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        s.name.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-[#1e3a5f] text-[14px]">
+                        {s.name}
+                      </div>
+                      {s.position && (
+                        <div className="text-[12px] text-[#6b7280]">
+                          <span className="font-semibold text-[#1e3a5f]">Designation:</span>{" "}
+                          {s.position}
+                        </div>
+                      )}
+                      {s.role_type && (
+                        <div className="text-[12px] font-medium text-[#2563b0]">
+                          <span className="font-semibold">Role:</span>{" "}
+                          {s.role_type}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Courses */}
+        {unit.courses && unit.courses.length > 0 && (
+          <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
+            <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-5">
+              Courses
+            </div>
+            <div className="flex flex-col gap-3">
+              {unit.courses.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/academic/courses/${c.slug}`}
+                  className="flex items-center justify-between p-4 rounded-xl border border-[#e5eaf3] hover:border-[#2563b0] hover:bg-[#f8faff] transition-all group"
+                >
+                  <div>
+                    <div className="font-medium text-[#1e3a5f] text-[14px] group-hover:text-[#2563b0]">
+                      {c.title}
+                    </div>
+                    {c.level && (
+                      <div className="text-[12px] text-[#6b7280] mt-0.5">{c.level}</div>
+                    )}
+                  </div>
+                  <i className="fas fa-arrow-right text-[#2563b0] text-[12px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+        <Link
+          href="/academic"
+          className="text-[#2563b0] font-medium text-[14px] flex items-center gap-2 hover:gap-3 transition-all"
+        >
+          <i className="fas fa-arrow-left text-[12px]"></i> Back to Academic
+        </Link>
+      </main>
     </>
   );
 }

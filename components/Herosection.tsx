@@ -112,14 +112,19 @@ export default function HeroSection() {
     <>
       {/* ===== TICKER ===== */}
       {tickerLoop.length > 0 && (
-        <div className="bg-[#152244] text-[#8da0c4] text-[11px] sm:text-[12px] px-4 sm:px-10 py-[10px] flex items-center gap-6 overflow-hidden whitespace-nowrap">
+        <div className="bg-[#152244] text-[#aebddd] text-[14px] sm:text-[15px] px-4 sm:px-10 py-3 flex items-center overflow-hidden whitespace-nowrap">
           <div className="flex w-full overflow-hidden">
-            <div className="inline-flex items-center gap-12 animate-ticker whitespace-nowrap">
+            <div className="inline-flex items-center gap-20 sm:gap-28 animate-ticker whitespace-nowrap">
               {tickerLoop.map((text, i) => (
-                <span key={i} className="inline-flex items-center gap-2 shrink-0">
-                  <i className="fas fa-bell text-[#e85d14]"></i>
-                  {text}
-                </span>
+                <Link
+                  key={`${text}-${i}`}
+                  href="/notifications"
+                  aria-label={`View notification: ${text}`}
+                  className="inline-flex items-center gap-3 shrink-0 font-medium hover:text-white transition-colors"
+                >
+                  <i className="fas fa-bell text-[#e85d14] text-[13px] sm:text-[14px]"></i>
+                  <span>{text}</span>
+                </Link>
               ))}
             </div>
           </div>
@@ -185,8 +190,16 @@ export default function HeroSection() {
             </span>
           </h1>
 
-          <p className="text-white/60 text-[14px] sm:text-[16px] leading-8 max-w-[700px] mb-8 sm:mb-10 font-light text-left align-justify">
-            Offering Higher National Diploma (HND) programmes in Information and Communication Technology, Construction Technology, Cosmetology, Farm Machinery Technology, Food Technology, Hospitality Management, Mechatronics Technology, Production Technology, and Building Services Technology, empowering students with industry-relevant knowledge, practical skills, and professional competencies for successful careers.
+          <p className="text-white/70 text-[14px] sm:text-[16px] leading-8 max-w-[760px] mb-8 sm:mb-10 font-light text-justify">
+            The University College of Jaffna was established in <strong>2014</strong> under
+            the <strong>University of Vocational Technology Act No. 31 of 2008</strong> and
+            operates under the <strong>University College Ordinance No. 1 of 2014</strong>
+            of the University of Vocational Technology (UoVT). The College offers
+            <strong> National Diploma (NVQ Level 5)</strong> and
+            <strong> Higher National Diploma (NVQ Level 6)</strong> programmes leading to
+            degree pathways offered by UoVT, preparing competent middle-level technical
+            and supervisory professionals with industry-relevant knowledge, practical
+            skills, and modern technological expertise.
           </p>
 
           {/* Buttons */}

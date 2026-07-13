@@ -46,7 +46,7 @@ export default function StudentLifePage() {
             Student <span className="text-[#e85d14]">Life</span>
           </h1>
           <p className="text-white/70 text-[15px] mb-5">
-            Experience a vibrant campus community full of learning, culture, sports, and growth
+            Experience a vibrant college community full of learning, culture, sports, and growth
           </p>
           <div className="text-white/50 text-[13px]">
             <Link href="/" className="hover:text-[#e85d14] transition-colors">Home</Link>
@@ -62,7 +62,7 @@ export default function StudentLifePage() {
       <section className="py-16 px-5 bg-[#f8f9fc]">
         <div className="max-w-[1280px] mx-auto">
           <h2 className="text-center text-[clamp(24px,3vw,34px)] font-extrabold text-[#0b1730] mb-3">
-            Campus <span className="text-[#e85d14]">Life</span>
+            College <span className="text-[#e85d14]">Life</span>
           </h2>
           <div className="w-16 h-1 bg-[#e85d14] rounded mx-auto mb-4" />
           <p className="text-center text-[#5a6380] text-[15px] mb-12">

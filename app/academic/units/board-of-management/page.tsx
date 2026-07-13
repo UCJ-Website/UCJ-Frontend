@@ -1,4 +1,3 @@
-
 //BoardOfManagementPage_role_type_no_gallery.tsx
 
 
@@ -7,14 +6,24 @@ import Link from "next/link";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
+interface StaffUnit {
+  id: number;
+  name: string;
+  short_code: string;
+  role_type?: string | null;
+}
+
 interface StaffMember {
   id: number;
+  slug?: string;
   name: string;
   position?: string | null;
   role_type?: string | null;
   email?: string | null;
   phone?: string | null;
   photo?: string | null;
+  units?: StaffUnit[];
+  departments?: StaffUnit[];
 }
 
 interface CourseSummary {
@@ -57,10 +66,129 @@ interface UnitDetail {
   gallery: GalleryItem[];
 }
 
+
+const BOARD_OF_MANAGEMENT_ORDER = [
+  "Mr. M. Ramanan",
+  "Mr. H. A. Seneviratne",
+  "Mr. K. Kuhananthan",
+  "Eng. J. Amalendran",
+  "Mr. A. Alvappillai",
+  "Miss G. Menisha",
+  "Dr. (Mrs.) T. E. Nirmalan",
+  "Mrs. V. Sivagowry",
+  "Miss K. Tharsana",
+  "Mr. S. M. P. S. Bandara",
+];
+
+function normalizePersonName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sortStaffByOfficialOrder(staff: StaffMember[]): StaffMember[] {
+  const officialOrder = new Map(
+    BOARD_OF_MANAGEMENT_ORDER.map((name, index) => [
+      normalizePersonName(name),
+      index,
+    ]),
+  );
+
+  return [...staff].sort((a, b) => {
+    const aIndex =
+      officialOrder.get(normalizePersonName(a.name)) ??
+      Number.MAX_SAFE_INTEGER;
+    const bIndex =
+      officialOrder.get(normalizePersonName(b.name)) ??
+      Number.MAX_SAFE_INTEGER;
+
+    if (aIndex !== bIndex) return aIndex - bIndex;
+
+    return a.name.localeCompare(b.name);
+  });
+}
+
 function imageUrl(path: string | null): string | null {
   if (!path) return null;
   if (path.startsWith("http")) return path;
   return `${API_BASE}/${path.replace(/^\/+/, "")}`;
+}
+
+async function fetchAllStaff(): Promise<StaffMember[]> {
+  try {
+    const allStaff: StaffMember[] = [];
+    let page = 1;
+    let lastPage = 1;
+
+    do {
+      const res = await fetch(`${API_BASE}/api/staffs?page=${page}`, {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) return [];
+
+      const json = await res.json();
+
+      const pageStaff: StaffMember[] =
+        json?.data?.staffs?.data ??
+        json?.data?.staffs ??
+        json?.staffs?.data ??
+        json?.staffs ??
+        json?.data ??
+        [];
+
+      if (Array.isArray(pageStaff)) {
+        allStaff.push(...pageStaff);
+      }
+
+      lastPage =
+        Number(json?.data?.staffs?.last_page) ||
+        Number(json?.staffs?.last_page) ||
+        Number(json?.data?.last_page) ||
+        1;
+
+      page += 1;
+    } while (page <= lastPage);
+
+    return Array.from(
+      new Map(allStaff.map((staff) => [staff.id, staff])).values(),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function getBoardOfManagementStaff(
+  staff: StaffMember[],
+): StaffMember[] {
+  return staff.reduce<StaffMember[]>((result, member) => {
+    const memberships = [
+      ...(member.units ?? []),
+      ...(member.departments ?? []),
+    ];
+
+    const bomMembership = memberships.find(
+      (item) =>
+        item.short_code?.trim().toUpperCase() === "BOM" ||
+        item.name?.trim().toLowerCase() === "board of management",
+    );
+
+    if (!bomMembership) {
+      return result;
+    }
+
+    result.push({
+      ...member,
+      role_type: bomMembership.role_type ?? member.role_type ?? null,
+    });
+
+    return result;
+  }, []);
 }
 
 async function getBoardOfManagement(): Promise<UnitDetail | null> {
@@ -77,8 +205,20 @@ async function getBoardOfManagement(): Promise<UnitDetail | null> {
 }
 
 export default async function BoardOfManagementPage() {
-  const unit = await getBoardOfManagement();
+  const [unit, allStaff] = await Promise.all([
+    getBoardOfManagement(),
+    fetchAllStaff(),
+  ]);
+
   if (!unit) return notFound();
+
+  const fetchedBomStaff = getBoardOfManagementStaff(allStaff);
+
+  const orderedStaff = sortStaffByOfficialOrder(
+    fetchedBomStaff.length > 0
+      ? fetchedBomStaff
+      : unit.staff ?? [],
+  );
 
   const bannerUrl = imageUrl(unit.banner_image);
   const logoUrl = imageUrl(unit.logo);
@@ -178,7 +318,7 @@ export default async function BoardOfManagementPage() {
         )}
 
         {/* Staff */}
-        {unit.staff && unit.staff.length > 0 && (
+        {orderedStaff.length > 0 && (
           <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
             <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-5">
               Staff Members
@@ -196,18 +336,15 @@ export default async function BoardOfManagementPage() {
                       Name
                     </th>
                     <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
+                      Designation
+                    </th>
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
                       Role
-                    </th>
-                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
-                      Email
-                    </th>
-                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
-                      Phone
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {unit.staff.map((s) => {
+                  {orderedStaff.map((s) => {
                     const photoUrl = imageUrl(s.photo ?? null);
                     return (
                       <tr
@@ -231,31 +368,10 @@ export default async function BoardOfManagementPage() {
                           {s.name}
                         </td>
                         <td className="py-3 px-3 text-[13px] text-[#6b7280]">
-                          {s.role_type ?? s.position ?? "—"}
+                          {s.position ?? "—"}
                         </td>
-                        <td className="py-3 px-3 text-[13px]">
-                          {s.email ? (
-                            <a
-                              href={`mailto:${s.email}`}
-                              className="text-[#2563b0] hover:underline"
-                            >
-                              {s.email}
-                            </a>
-                          ) : (
-                            <span className="text-[#9ca3af]">—</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-3 text-[13px]">
-                          {s.phone ? (
-                            <a
-                              href={`tel:${s.phone}`}
-                              className="text-[#2563b0] hover:underline"
-                            >
-                              {s.phone}
-                            </a>
-                          ) : (
-                            <span className="text-[#9ca3af]">—</span>
-                          )}
+                        <td className="py-3 px-3 text-[13px] text-[#6b7280]">
+                          {s.role_type ?? "—"}
                         </td>
                       </tr>
                     );
@@ -266,7 +382,7 @@ export default async function BoardOfManagementPage() {
 
             {/* Stacked cards (mobile only) */}
             <div className="sm:hidden flex flex-col gap-3">
-              {unit.staff.map((s) => {
+              {orderedStaff.map((s) => {
                 const photoUrl = imageUrl(s.photo ?? null);
                 return (
                   <div
@@ -288,18 +404,15 @@ export default async function BoardOfManagementPage() {
                       <div className="font-semibold text-[#1e3a5f] text-[14px]">
                         {s.name}
                       </div>
-                      {(s.role_type || s.position) && (
-                        <div className="text-[12px] font-medium text-[#2563b0]">
-                          {s.role_type ?? s.position}
+                      {s.position && (
+                        <div className="text-[12px] text-[#6b7280]">
+                          {s.position}
                         </div>
                       )}
-                      {s.email && (
-                        <a
-                          href={`mailto:${s.email}`}
-                          className="text-[12px] text-[#2563b0] hover:underline"
-                        >
-                          {s.email}
-                        </a>
+                      {s.role_type && (
+                        <div className="text-[12px] font-medium text-[#2563b0]">
+                          {s.role_type}
+                        </div>
                       )}
                     </div>
                   </div>

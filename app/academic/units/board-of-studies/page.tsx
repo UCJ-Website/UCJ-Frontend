@@ -55,6 +55,65 @@ interface UnitDetail {
   gallery: GalleryItem[];
 }
 
+
+const BOARD_OF_STUDIES_ORDER = [
+  "Mr. M. Ramanan",
+  "Dr. B. Ketheesan",
+  "Dr. K. Thabotharan",
+  "Miss K. Tharsana",
+  "Eng. Mr. N. Ravindran",
+  "Dr. K. Shanmuganathan",
+  "Miss G. Menisha",
+  "Mr. V. Hiroshaan",
+  "Eng. K. Kamalaruban",
+  "Miss. M. Priyatharsini",
+  "Mrs. P. Karthiha",
+  "Dr. (Mrs.) T. E. Nirmalan",
+  "Eng. Mr. R. Gobalarajah",
+  "Eng. Mrs. T. Shobith",
+  "Eng. S. Thenusa",
+  "Eng. Mr. N. Siyamsanker",
+  "Miss. M. Pugalini",
+  "Miss. J. Bavithira",
+  "Miss S. Kalina",
+  "Mrs. V. Sivagowry",
+  "Ms. V. Sandavi",
+  "Miss S. Vasuki",
+  "Mrs. P. Thanuja",
+  "Mr. R. Heshanthan",
+  "Eng. Mr. S. Paheerathan",
+];
+
+function normalizePersonName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sortStaffByOfficialOrder(staff: StaffMember[]): StaffMember[] {
+  const officialOrder = new Map(
+    BOARD_OF_STUDIES_ORDER.map((name, index) => [
+      normalizePersonName(name),
+      index,
+    ]),
+  );
+
+  return [...staff].sort((a, b) => {
+    const aIndex =
+      officialOrder.get(normalizePersonName(a.name)) ??
+      Number.MAX_SAFE_INTEGER;
+    const bIndex =
+      officialOrder.get(normalizePersonName(b.name)) ??
+      Number.MAX_SAFE_INTEGER;
+
+    if (aIndex !== bIndex) return aIndex - bIndex;
+
+    return a.name.localeCompare(b.name);
+  });
+}
+
 function imageUrl(path: string | null): string | null {
   if (!path) return null;
   if (path.startsWith("http")) return path;
@@ -77,6 +136,8 @@ async function getBoardOfStudies(): Promise<UnitDetail | null> {
 export default async function BoardOfStudiesPage() {
   const unit = await getBoardOfStudies();
   if (!unit) return notFound();
+
+  const orderedStaff = sortStaffByOfficialOrder(unit.staff ?? []);
 
   const bannerUrl = imageUrl(unit.banner_image);
   const logoUrl = imageUrl(unit.logo);
@@ -176,7 +237,7 @@ export default async function BoardOfStudiesPage() {
         )}
 
         {/* Staff */}
-        {unit.staff && unit.staff.length > 0 && (
+        {orderedStaff.length > 0 && (
           <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
             <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-5">
               Staff Members
@@ -194,18 +255,15 @@ export default async function BoardOfStudiesPage() {
                       Name
                     </th>
                     <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
+                      Designation
+                    </th>
+                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
                       Role
-                    </th>
-                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
-                      Email
-                    </th>
-                    <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
-                      Phone
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {unit.staff.map((s) => {
+                  {orderedStaff.map((s) => {
                     const photoUrl = imageUrl(s.photo ?? null);
                     return (
                       <tr
@@ -229,31 +287,10 @@ export default async function BoardOfStudiesPage() {
                           {s.name}
                         </td>
                         <td className="py-3 px-3 text-[13px] text-[#6b7280]">
-                          {s.role_type ?? s.position ?? "—"}
+                          {s.position ?? "—"}
                         </td>
-                        <td className="py-3 px-3 text-[13px]">
-                          {s.email ? (
-                            <a
-                              href={`mailto:${s.email}`}
-                              className="text-[#2563b0] hover:underline"
-                            >
-                              {s.email}
-                            </a>
-                          ) : (
-                            <span className="text-[#9ca3af]">—</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-3 text-[13px]">
-                          {s.phone ? (
-                            <a
-                              href={`tel:${s.phone}`}
-                              className="text-[#2563b0] hover:underline"
-                            >
-                              {s.phone}
-                            </a>
-                          ) : (
-                            <span className="text-[#9ca3af]">—</span>
-                          )}
+                        <td className="py-3 px-3 text-[13px] font-medium text-[#2563b0]">
+                          {s.role_type ?? "—"}
                         </td>
                       </tr>
                     );
@@ -264,7 +301,7 @@ export default async function BoardOfStudiesPage() {
 
             {/* Stacked cards (mobile only) */}
             <div className="sm:hidden flex flex-col gap-3">
-              {unit.staff.map((s) => {
+              {orderedStaff.map((s) => {
                 const photoUrl = imageUrl(s.photo ?? null);
                 return (
                   <div
@@ -286,18 +323,17 @@ export default async function BoardOfStudiesPage() {
                       <div className="font-semibold text-[#1e3a5f] text-[14px]">
                         {s.name}
                       </div>
-                      {(s.role_type || s.position) && (
-                        <div className="text-[12px] font-medium text-[#2563b0]">
-                          {s.role_type ?? s.position}
+                      {s.position && (
+                        <div className="text-[12px] text-[#6b7280]">
+                          <span className="font-semibold text-[#1e3a5f]">Designation:</span>{" "}
+                          {s.position}
                         </div>
                       )}
-                      {s.email && (
-                        <a
-                          href={`mailto:${s.email}`}
-                          className="text-[12px] text-[#2563b0] hover:underline"
-                        >
-                          {s.email}
-                        </a>
+                      {s.role_type && (
+                        <div className="text-[12px] font-medium text-[#2563b0]">
+                          <span className="font-semibold">Role:</span>{" "}
+                          {s.role_type}
+                        </div>
                       )}
                     </div>
                   </div>

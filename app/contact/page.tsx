@@ -144,7 +144,7 @@ export default function ContactPage() {
                   {
                     icon: "fa-phone",
                     label: "Phone",
-                    value: "+94 0212 217 791",
+                    value: "+94 212 217 791",
                   },
                 ].map((item) => (
                   <div

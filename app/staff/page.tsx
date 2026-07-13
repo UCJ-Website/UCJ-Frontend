@@ -384,11 +384,10 @@ export default function StaffPage() {
   const nonAcademicSubFilters = useMemo(() => {
     const preferredOrder = [
       "Head of Administrative Division",
+      "Administrative Branch",
       "Head of Finance Division",
       "Finance Branch",
-      "Administrative Branch",
       "Head of Library",
-      "Laboratory Assistant",
     ];
 
     const unique = Array.from(
@@ -405,7 +404,8 @@ export default function StaffPage() {
               !normalizedSubcategory.includes("former director") &&
               // Board members are displayed only on their unit pages.
               normalizedSubcategory !== "board of management" &&
-              normalizedSubcategory !== "board of studies"
+              normalizedSubcategory !== "board of studies" &&
+              normalizedSubcategory !== "laboratory assistant"
             );
           })
           .map((m) => m.subcategory as string),
@@ -444,15 +444,16 @@ export default function StaffPage() {
               member.category === "non-academic" &&
               member.subcategory === filter.id &&
               normalizedSubcategory !== "board of management" &&
-              normalizedSubcategory !== "board of studies"
+              normalizedSubcategory !== "board of studies" &&
+              normalizedSubcategory !== "laboratory assistant"
             );
           })
           .sort((a, b) => {
             const administrativeBranchPositionOrder = [
               "Management Assistant - Grade III",
               "Maintenance Technician",
-              "Office Assistant",
               "Driver",
+              "Office Assistant",
             ];
 
             const rank = (member: StaffMember) => {
@@ -758,14 +759,54 @@ export default function StaffPage() {
                     </div>
 
                     {section.members.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                        {section.members.map((member) => (
-                          <StaffCard
-                            key={`${section.id}-${member.id}`}
-                            member={member}
-                          />
-                        ))}
-                      </div>
+                      section.id === "Administrative Branch" ? (
+                        <div className="space-y-10">
+                          {[
+                            "Management Assistant - Grade III",
+                            "Maintenance Technician",
+                            "Driver",
+                            "Office Assistant",
+                          ].map((position) => {
+                            const positionMembers = section.members.filter(
+                              (member) => member.position.trim() === position,
+                            );
+
+                            if (positionMembers.length === 0) return null;
+
+                            return (
+                              <div key={position}>
+                                <div className="flex items-center gap-3 mb-5">
+                                  <h4 className="text-[15px] font-bold text-[#0b1730]">
+                                    {position}
+                                  </h4>
+                                  <div className="flex-1 h-px bg-gray-200" />
+                                  <span className="text-[11px] font-semibold text-[#5a6380] bg-white border border-gray-200 rounded-full px-2.5 py-1">
+                                    {positionMembers.length}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                                  {positionMembers.map((member) => (
+                                    <StaffCard
+                                      key={`${section.id}-${position}-${member.id}`}
+                                      member={member}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                          {section.members.map((member) => (
+                            <StaffCard
+                              key={`${section.id}-${member.id}`}
+                              member={member}
+                            />
+                          ))}
+                        </div>
+                      )
                     ) : (
                       <div className="rounded-xl border border-dashed border-gray-200 bg-white py-10 text-center">
                         <p className="text-[13px] text-[#5a6380]">

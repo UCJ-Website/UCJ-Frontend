@@ -11,13 +11,6 @@ const management: Record<string, {
   responsibilities: string[];
   external_url: string;
   external_label: string;
-  // Exact `subcategory` values to match — these are the same values the
-  // /staff page's "Non Academic" sub-filter chips are built from (e.g.
-  // "Finance Branch", "Administrative Branch"). Guessing via keywords on
-  // `position` or a `units[].short_code` pulled unrelated staff in
-  // (an English Instructor, a broken "Assistant Bursar" placeholder
-  // record) because those fields don't reliably say what office someone
-  // belongs to — subcategory does, so match on it exactly.
   subcategories: string[];
 }> = {
   "director-office": {
@@ -28,7 +21,7 @@ const management: Record<string, {
       { label: "Department", value: "Director's Office" },
       { label: "Location", value: "No 29 Brown Road, Kokuvil East, Jaffna" },
       { label: "Office Hours", value: "Mon – Fri, 8:30 AM – 4:00 PM" },
-      { label: "Contact", value: "+94 0212 217791" },
+      { label: "Contact", value: "+94 212 217791" },
     ],
     description:
       "The Director's Office serves as the apex of academic and administrative leadership at University College of Jaffna. Operating under the University of Jaffna, the Director oversees all institutional functions — ensuring that academic programmes meet national standards, that faculty and staff are supported, and that the institution's strategic vision is effectively carried out across all departments.",
@@ -81,7 +74,7 @@ const management: Record<string, {
       { label: "Team", value: "1 Assistant Bursar · 3 Management Assistants" },
       { label: "Standard", value: "SLPSAS Compliant" },
       { label: "Office Hours", value: "Mon – Fri, 8:30 AM – 4:00 PM" },
-      { label: "Contact", value: "+94 0212 217791" },
+      { label: "Contact", value: "+94 212 217791" },
     ],
     description:
       "The Finance division of University College of Jaffna prepares annual financial statements in compliance with Sri Lanka Public Sector Accounting Standards (SLPSAS), submits them for government audit, prepares annual budgets, manages all payments, oversees capital works, and maintains the fixed asset register. The section manages increasing budgets from 2025 to 2026, reflecting institutional growth. Future plans include implementing the Govpay system and adopting the Electronic Government Procurement (eGP) system to improve efficiency and transparency.",
@@ -95,7 +88,7 @@ const management: Record<string, {
     ],
     external_url: "https://",
     external_label: "Visit Bursar's Office",
-    subcategories: ["Finance Branch"],
+    subcategories: ["Head of Finance Division", "Finance Branch"],
   },
   "library": {
     icon: "fa-book-open",
@@ -265,6 +258,41 @@ function filterAdminStaff(all: Staff[], subcategories: string[]): Staff[] {
   );
 }
 
+function filterFinanceStaff(all: Staff[], subcategories: string[]): Staff[] {
+  return all.filter((s) => {
+    const subcategory = (s.subcategory ?? "").trim();
+    const position = (s.position ?? "").trim().toLowerCase();
+
+    const isFinanceSectionStaff = subcategories.includes(subcategory);
+
+    const isBoardOnlyMember = (s.units ?? []).some((unit) => {
+      const code = (unit.short_code ?? "").trim().toUpperCase();
+      const name = (unit.name ?? "").trim().toLowerCase();
+
+      return (
+        code === "BOM" ||
+        code === "BOS" ||
+        name === "board of management" ||
+        name === "board of studies"
+      );
+    });
+
+    const isAssistantBursar =
+      position === "assistant bursar" ||
+      position === "assistant bursar (acting)" ||
+      position.includes("assistant bursar");
+
+    // Finance Branch / Head of Finance Division staff always display.
+    if (isFinanceSectionStaff) {
+      return true;
+    }
+
+    // Do not pull an Assistant Bursar record only because that person is
+    // attached to the Board of Management or Board of Studies.
+    return isAssistantBursar && !isBoardOnlyMember;
+  });
+}
+
 export default async function AdminSlugPage({
   params,
 }: {
@@ -282,6 +310,8 @@ export default async function AdminSlugPage({
       ? filterLibraryStaff(allStaff, item.subcategories)
       : slug === "admin-office"
       ? filterAdminStaff(allStaff, item.subcategories)
+      : slug === "finance"
+      ? filterFinanceStaff(allStaff, item.subcategories)
       : filterBySubcategory(allStaff, item.subcategories);
 
   // Admin Office: order staff by position priority — Management
@@ -302,6 +332,25 @@ export default async function AdminSlugPage({
         return index === -1 ? priorityOrder.length : index;
       };
       return rank(a) - rank(b);
+    });
+  }
+
+  if (slug === "finance") {
+    staff.sort((a, b) => {
+      const rank = (s: Staff) => {
+        const position = (s.position ?? "").trim().toLowerCase();
+        const subcategory = (s.subcategory ?? "").trim().toLowerCase();
+
+        if (position.includes("assistant bursar")) return 0;
+        if (subcategory === "head of finance division") return 1;
+        if (subcategory === "finance branch") return 2;
+        return 3;
+      };
+
+      const rankDifference = rank(a) - rank(b);
+      if (rankDifference !== 0) return rankDifference;
+
+      return a.name.localeCompare(b.name);
     });
   }
   const formerDirectors = slug === "director-office" ? allStaff.filter(isFormerDirectorMention) : [];

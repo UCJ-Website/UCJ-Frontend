@@ -10,7 +10,7 @@ const services = [
       { label: "Office", value: "Admissions Unit, UCJ" },
       { label: "Location", value: "No 29 Brown Road, Kokuvil East, Jaffna" },
       { label: "Office Hours", value: "Mon – Fri, 8:30 AM – 4:00 PM" },
-      { label: "Contact", value: "+94 0212 217791" },
+      { label: "Contact", value: "+94 212 217791" },
     ],
     description:
       "The Admissions unit at University College of Jaffna manages the full student intake process — from receiving applications and verifying eligibility to registering successful candidates and coordinating orientation. Whether you're applying for an HND programme or a general certificate course, the Admissions team is your first point of contact.",
@@ -29,8 +29,8 @@ const services = [
       "Orientation programme management",
       "Scholarship and bursary guidance",
     ],
-    external_url: "https://www.jfn.ac.lk/index.php/unit/admissions/",
-    external_label: "Visit UoJ Admissions",
+    external_url: " ",
+    external_label: "Visit UCJ Admissions",
   },
   {
     slug: "examinations",
@@ -60,8 +60,8 @@ const services = [
       "Results processing and publication",
       "Supplementary exam coordination",
     ],
-    external_url: "https://www.jfn.ac.lk/index.php/unit/general-administration/",
-    external_label: "Visit UoJ Examinations",
+    external_url: " ",
+    external_label: "Visit UCJ Examinations",
   },
 ];
 

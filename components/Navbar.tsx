@@ -56,7 +56,7 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
 
   const hndCourses = courses.filter(c => c.is_main !== false);
 
-  // API object/paginated shape வந்தாலும் crash ஆகாம safe-ஆ handle பண்றோம்
+  
   const deptsArray: Department[] = Array.isArray(departments)
     ? departments
     : Array.isArray((departments as any)?.data)
@@ -180,7 +180,7 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
         </span>
         <span className="flex items-center gap-2 shrink-0">
           <i className="fas fa-phone text-[#e85d14]" />
-          +94 0212 217791
+          +94 212 217791
         </span>
       </div>
 
