@@ -5,7 +5,7 @@ const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
 const API_BASE = `${ORIGIN}/api`;
 
-const PER_PAGE = 6;
+const PER_PAGE = 9;
 
 function resolveImage(path: string | null | undefined): string {
   if (!path) return "";
@@ -167,7 +167,7 @@ export default async function CoursesPage({
 
       {/* Hero */}
       <section
-        className="py-16 px-6"
+        className="py-5 px-6"
         style={{ background: "linear-gradient(135deg, #0b1730 0%, #152244 60%, #1e3060 100%)" }}
       >
         <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-10">
@@ -201,7 +201,7 @@ export default async function CoursesPage({
       </section>
 
       {/* HND Courses */}
-      <section className="py-16 px-6 bg-[#f8f9fc]">
+      <section className="py-5 px-6 bg-[#f8f9fc]">
         <div className="max-w-[1280px] mx-auto">
           <div className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#e85d14] mb-2">Higher National Diplomas</div>
           <h2 className="font-extrabold text-[#0b1730] mb-2" style={{ fontSize: "clamp(24px,3vw,34px)" }}>
@@ -213,7 +213,7 @@ export default async function CoursesPage({
             <p className="text-gray-400 text-sm text-center py-16">No courses available.</p>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {courses.map((course) => (
                   <Link
                     key={course.href}

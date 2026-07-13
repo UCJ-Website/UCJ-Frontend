@@ -68,7 +68,7 @@ export default async function StudentFormPage() {
     <>
       {/* HERO */}
       <div
-        className="relative flex flex-col items-center justify-center text-center py-20 px-5 overflow-hidden"
+        className="relative flex flex-col items-center justify-center text-center py-3 px-5 overflow-hidden"
         style={{ background: "linear-gradient(135deg, #0b1730 0%, #1a3060 100%)", minHeight: "260px" }}
       >
         <div

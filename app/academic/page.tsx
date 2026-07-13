@@ -29,6 +29,7 @@ interface Unit {
 
 function getIcon(name: string): string {
   const lower = name.toLowerCase();
+
   if (lower.includes("building")) return "fa-tools";
   if (lower.includes("construction")) return "fa-hard-hat";
   if (lower.includes("mechatronics")) return "fa-robot";
@@ -38,11 +39,26 @@ function getIcon(name: string): string {
   if (lower.includes("hospitality")) return "fa-concierge-bell";
   if (lower.includes("interdisciplinary")) return "fa-compass";
   if (lower.includes("cosmetology")) return "fa-spa";
+
+  if (
+    lower.includes("ojt") ||
+    lower.includes("on-the-job") ||
+    lower.includes("on the job")
+  ) {
+    return "fa-briefcase";
+  }
+
   if (lower.includes("hrdc")) return "fa-graduation-cap";
   if (lower.includes("career")) return "fa-handshake";
   if (lower.includes("staff")) return "fa-users";
-  if (lower.includes("board of manage") || lower.includes("managment")) return "fa-building";
+  if (
+    lower.includes("board of manage") ||
+    lower.includes("managment")
+  ) {
+    return "fa-building";
+  }
   if (lower.includes("board of stud")) return "fa-book-open";
+
   return "fa-layer-group";
 }
 

@@ -104,8 +104,8 @@ export default function HeroSection() {
   const tickerLoop =
     tickerItems.length > 0
       ? Array(Math.max(1, Math.ceil(12 / tickerItems.length)))
-          .fill(tickerItems)
-          .flat()
+        .fill(tickerItems)
+        .flat()
       : [];
 
   return (
@@ -185,11 +185,8 @@ export default function HeroSection() {
             </span>
           </h1>
 
-          <p className="text-white/60 text-[14px] sm:text-[16px] leading-[1.75] max-w-[500px] mb-8 sm:mb-10 font-light text-justify">
-            Offering Higher National Diploma (HND) programs in ICT, Production
-            Technology, Building Services, Construction, Farm Machinery, and
-            Cosmetology — building skilled professionals for a stronger Northern
-            Sri Lanka.
+          <p className="text-white/60 text-[14px] sm:text-[16px] leading-8 max-w-[700px] mb-8 sm:mb-10 font-light text-left align-justify">
+            Offering Higher National Diploma (HND) programmes in Information and Communication Technology, Construction Technology, Cosmetology, Farm Machinery Technology, Food Technology, Hospitality Management, Mechatronics Technology, Production Technology, and Building Services Technology, empowering students with industry-relevant knowledge, practical skills, and professional competencies for successful careers.
           </p>
 
           {/* Buttons */}
@@ -212,7 +209,7 @@ export default function HeroSection() {
           <div className="flex gap-2.5 sm:gap-3 flex-wrap">
             {[
               { icon: "fa-images", label: "Gallery", href: "/gallery" },
-              { icon: "fa-tools", label: "Workshops", href: "/events" },
+              { icon: "fa-tools", label: "Workshops", href: "/events?category=workshop" },
               { icon: "fa-bell", label: "Notices", href: "/notifications" },
             ].map((pill) => (
               <Link
@@ -249,11 +246,10 @@ export default function HeroSection() {
               <button
                 key={i}
                 onClick={() => goTo(i)}
-                className={`rounded-full transition-all duration-300 ${
-                  i === current
-                    ? "w-5 sm:w-6 h-2 bg-[#e87c2a]"
-                    : "w-2 h-2 bg-white/40 hover:bg-white/70"
-                }`}
+                className={`rounded-full transition-all duration-300 ${i === current
+                  ? "w-5 sm:w-6 h-2 bg-[#e87c2a]"
+                  : "w-2 h-2 bg-white/40 hover:bg-white/70"
+                  }`}
               />
             ))}
           </div>
@@ -270,9 +266,8 @@ export default function HeroSection() {
           ].map((stat, i) => (
             <div
               key={stat.label}
-              className={`py-4 sm:py-6 px-4 sm:px-8 text-center hover:bg-gray-50 transition-colors ${
-                i < 2 ? "border-r border-gray-200" : ""
-              }`}
+              className={`py-4 sm:py-6 px-4 sm:px-8 text-center hover:bg-gray-50 transition-colors ${i < 2 ? "border-r border-gray-200" : ""
+                }`}
             >
               <div className="font-[Outfit,sans-serif] text-[24px] sm:text-[30px] font-extrabold text-[#0b1730] leading-none">
                 {stat.num.replace("+", "")}

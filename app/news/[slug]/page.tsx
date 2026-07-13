@@ -110,11 +110,11 @@ export default async function NewsDetailsPage({ params }: { params: Promise<{ sl
 
           {/* MAIN ARTICLE */}
           <article className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            {img && (
-              <div className="w-full h-[280px] sm:h-[380px] overflow-hidden bg-[#0b1730]">
-                <img src={img} alt={news.title} className="w-full h-full object-cover" />
-              </div>
-            )}
+          {img && (
+  <div className="w-full aspect-[3/2] overflow-hidden bg-[#0b1730]">
+    <img src={img} alt={news.title} className="w-full h-full object-cover" />
+  </div>
+)}
             <div className="p-6 sm:p-10">
               <div className="text-[15px] text-[#3d4a6a] leading-[1.9] whitespace-pre-line">
                 {news.content}

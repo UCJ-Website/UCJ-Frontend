@@ -9,7 +9,7 @@ interface NewsCard {
   tagClass: string;
   date: string;
   title: string;
-  meta: string;
+  // meta: string;
   href: string;
   fallbackClass: string;
   fallbackIcon: string;
@@ -50,7 +50,7 @@ function mapNewsItem(item: any, kind: "news" | "event"): NewsCard {
     tagClass: kind === "event" ? "bg-[#185FA5]" : "bg-[#e85d14]",
     date: formatDate(item.published_at ?? item.event_date ?? item.date ?? item.created_at),
     title: item.title,
-    meta: item.read_time ? `${item.read_time} min read` : (item.location ?? ""),
+  //  meta: item.read_time ? `${item.read_time} min read` : (item.location ?? ""),
     href: kind === "event" ? `/events/${item.slug}` : `/news/${item.slug}`,
     fallbackClass: kind === "event" ? "from-[#185FA5] to-[#0b1730]" : "from-[#e85d14] to-[#0b1730]",
     fallbackIcon: kind === "event" ? "fa-calendar-alt" : "fa-newspaper",
@@ -75,9 +75,14 @@ function CardGrid({ cards, altBg = false }: { cards: NewsCard[]; altBg?: boolean
         <Link
           key={card.title}
           href={card.href}
-          className={`flex flex-col rounded-2xl overflow-hidden border border-[#97938f] transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg cursor-pointer ${altBg ? "bg-[#f8f9fc]" : "bg-white"}`}
+          className={`group flex flex-col rounded-2xl overflow-hidden border border-[#97938f] transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg cursor-pointer ${altBg ? "bg-[#f8f9fc]" : "bg-white"}`}
         >
-          <div className="h-[172px] relative overflow-hidden shrink-0">
+          {/* aspect-[3/2] matches the actual uploaded image size (1536x1024 = 3:2).
+              A fixed h-[172px] here forced object-cover to crop the top/bottom
+              off wide banner images (titles like "STUDENT BURSARY" got cut).
+              Matching the container ratio to the image ratio means object-cover
+              can fill it with zero cropping. */}
+          <div className="aspect-[3/2] relative overflow-hidden shrink-0">
             {/* Guarded: an empty string in src makes the browser treat it as
                 "reload current page", which is what threw the console error.
                 Only render the <img> when we actually have a resolved URL —
@@ -104,11 +109,17 @@ function CardGrid({ cards, altBg = false }: { cards: NewsCard[]; altBg?: boolean
           </div>
           <div className="p-5 flex flex-col gap-2.5 flex-1">
             <div className="text-[14px] font-semibold text-[#0f1729] leading-[1.55]">{card.title}</div>
-            {card.meta && (
-              <div className="text-[12px] text-gray-400 flex items-center gap-1 mt-auto">
+            {/* {card.meta && (
+              <div className="text-[12px] text-gray-400 flex items-center gap-1">
                 <i className="fas fa-tag text-[11px] text-[#e85d14]"></i> {card.meta}
               </div>
-            )}
+            )} */}
+            {/* Read More — sits on its own line below the title/meta.
+                Same visual language as the "Learn More" link used in the
+                Courses cards further down this page. */}
+            <span className="inline-flex items-center gap-1.5 text-[#e85d14] text-[12px] font-semibold mt-auto pt-1 group-hover:gap-2.5 transition-all duration-200">
+              Read More <i className="fas fa-arrow-right text-[10px]"></i>
+            </span>
           </div>
         </Link>
       ))}
@@ -121,7 +132,7 @@ function SkeletonGrid() {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[22px]">
       {[1, 2, 3].map((i) => (
         <div key={i} className="rounded-2xl overflow-hidden border border-gray-200 bg-white animate-pulse">
-          <div className="h-[172px] bg-gray-200" />
+          <div className="aspect-[3/2] bg-gray-200" />
           <div className="p-5 flex flex-col gap-3">
             <div className="h-4 bg-gray-200 rounded w-3/4" />
             <div className="h-4 bg-gray-200 rounded w-1/2" />
@@ -193,7 +204,7 @@ export default function HomeSections() {
         // Home page shows only the main HND programmes (is_main: true).
         // Foundation/general courses (General English, General ICT, etc.) are excluded here.
         const mainOnly = items.filter((item: any) => !!item.is_main);
-        setCourses(mainOnly.slice(0, 6).map(mapCourseItem));
+        setCourses(mainOnly.slice(0, 9).map(mapCourseItem));
       })
       .catch(() => setCourses([]))
       .finally(() => setLoadingCourses(false));
@@ -249,9 +260,9 @@ export default function HomeSections() {
 
           {loadingCourses ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[22px]">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
                 <div key={i} className="rounded-2xl overflow-hidden border border-gray-200 bg-white animate-pulse">
-                  <div className="h-[150px] bg-gray-200" />
+                  <div className="aspect-[3/2] bg-gray-200" />
                   <div className="p-5 flex flex-col gap-3">
                     <div className="h-3 bg-gray-200 rounded w-1/4" />
                     <div className="h-4 bg-gray-200 rounded w-3/4" />
@@ -266,7 +277,10 @@ export default function HomeSections() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[22px]">
               {courses.map((course) => (
                 <div key={course.code || course.title} className="flex flex-col bg-white rounded-2xl overflow-hidden border border-[#97938f] transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg cursor-pointer">
-                  <div className="h-[150px] relative overflow-hidden">
+                  {/* aspect-[3/2] matches the actual uploaded image size (1536x1024
+                      = 3:2), same fix as the News/Events CardGrid above — a fixed
+                      h-[150px] was forcing object-cover to crop the image. */}
+                  <div className="aspect-[3/2] relative overflow-hidden shrink-0">
                     {/* Same guard as CardGrid above — empty src string triggers
                         the Next.js console error and an unnecessary network hit. */}
                     {course.img && (

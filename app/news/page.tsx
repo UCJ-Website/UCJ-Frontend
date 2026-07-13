@@ -48,7 +48,6 @@ function mapNewsItem(item: any): NewsItem {
     img: resolveImage(item.image),
     category: (item.category ?? "general") as NewsItem["category"],
     title: item.title,
-    desc: item.content,
     date: formatDate(item.published_at ?? item.created_at),
     read_time: item.read_time ? `${item.read_time} min read` : undefined,
     href: `/news/${item.slug}`,
@@ -301,7 +300,7 @@ export default function LatestNewsPage() {
             <p className="text-gray-400 text-[14px]">No news found.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8 border-b border-gray-200 pb-8">
             {filtered.map((item) => (
               <Link
                 key={item.id}
@@ -323,9 +322,7 @@ export default function LatestNewsPage() {
                     {item.category}
                   </span>
                   <h3 className="text-[15px] font-bold text-[#0b1730] leading-[1.4]">{item.title}</h3>
-                  {item.desc && (
-                    <p className="text-[13px] text-gray-500 leading-[1.6] line-clamp-2">{item.desc}</p>
-                  )}
+                  
                   <div className="text-[12px] text-gray-400 flex items-center gap-1">
                     <i className="far fa-calendar-alt text-[#e85d14] text-[10px]"></i>{item.date}
                   </div>

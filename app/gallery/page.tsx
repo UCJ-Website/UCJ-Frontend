@@ -71,7 +71,7 @@ interface AlbumImage {
 interface Album {
   id: number;
   title: string;
-  description: string;
+  // description: string;
   category: string;
   month: number;
   year: number;
@@ -101,7 +101,7 @@ function normalizeAlbum(raw: any): Album {
   return {
     id:               Number(raw.id),
     title:            String(raw.title ?? ""),
-    description:      String(raw.description ?? ""),
+    // description:      String(raw.description ?? ""),
     category:         String(raw.category ?? raw.event ?? "cultural"),
     month:            parseMonth(raw.month),
     year:             Number(raw.year),
@@ -117,24 +117,24 @@ function AlbumCard({ album, onClick }: { album: Album; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col"
+      className="group bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-[#e85d14]/40 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer flex flex-col"
       style={{ boxShadow: "0 2px 12px rgba(11,23,48,0.07)" }}
     >
       {/* Cover */}
       <div
-        className="relative h-[150px] overflow-hidden flex items-center justify-center shrink-0"
+        className="relative aspect-[3/2] w-full overflow-hidden flex items-center justify-center shrink-0"
         style={{ background: pal.bg }}
       >
         {album.cover_image ? (
           <img
             src={album.cover_image}
             alt={album.title}
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         ) : null}
         {/* Dark gradient overlay always present */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
 
         <span className="text-[2rem] z-10 select-none drop-shadow-lg">{pal.icon}</span>
 
@@ -180,11 +180,11 @@ function AlbumCard({ album, onClick }: { album: Album; onClick: () => void }) {
         <div className="text-[12px] font-semibold text-[#0b1730] leading-snug">{album.title}</div>
 
         {/* Full description — no truncation, wraps completely below the title */}
-        {album.description && (
+        {/* {album.description && (
           <div className="text-[10px] text-gray-500 leading-relaxed whitespace-pre-line break-words">
             {album.description}
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
@@ -219,7 +219,7 @@ function AlbumLightbox({ album, onClose }: { album: AlbumDetail; onClose: () => 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col" style={{ background: "rgba(6,10,22,0.97)" }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 shrink-0 backdrop-blur-sm">
+      <div className="flex items-center justify-between px-5 py-1 border-b border-white/10 shrink-0 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           {view === "single" && (
             <button
@@ -232,11 +232,11 @@ function AlbumLightbox({ album, onClose }: { album: AlbumDetail; onClose: () => 
           )}
           <div>
             <div className="text-white font-bold text-[15px] leading-tight">{album.title}</div>
-            {album.description && (
+            {/* {album.description && (
               <div className="text-white/50 text-[11px] leading-relaxed mt-1 max-w-[520px] whitespace-pre-line break-words">
                 {album.description}
               </div>
-            )}
+            )} */}
             <div className="text-white/40 text-[11px] flex items-center gap-2 mt-1.5 flex-wrap">
               <span>{pal.icon} {pal.label}</span>
               <span className="w-1 h-1 rounded-full bg-white/20 inline-block"></span>
@@ -262,7 +262,7 @@ function AlbumLightbox({ album, onClose }: { album: AlbumDetail; onClose: () => 
 
       {/* Grid view */}
       {view === "grid" && (
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-2">
           {images.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-white/30">
               <i className="fas fa-images text-[48px]"></i>
@@ -481,8 +481,9 @@ export default function GalleryPage() {
         (fpState.event === "all" || d.category === fpState.event) &&
         (fpState.department === "all" || d.department_code === fpState.department) &&
         (!search ||
-          d.title.toLowerCase().includes(search.toLowerCase()) ||
-          d.description.toLowerCase().includes(search.toLowerCase()))
+          d.title.toLowerCase().includes(search.toLowerCase()) )
+          // ||
+          // d.description.toLowerCase().includes(search.toLowerCase()))
     )
     .sort((a, b) => b.year - a.year || a.month - b.month || a.id - b.id);
 
@@ -846,7 +847,7 @@ export default function GalleryPage() {
             <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {[1,2,3,4,5,6,7,8,9,10].map((i) => (
                 <div key={i} className="rounded-2xl overflow-hidden bg-white border border-gray-100 animate-pulse">
-                  <div className="h-[150px] bg-gray-100" />
+                  <div className="aspect-[3/2] w-full bg-gray-100" />
                   <div className="p-2.5 flex flex-col gap-2">
                     <div className="h-2 bg-gray-100 rounded-full w-2/3" />
                     <div className="h-2 bg-gray-100 rounded-full w-1/2" />

@@ -58,18 +58,18 @@ export default function FormClient({ forms }: { forms: StudentForm[] }) {
   }
 
   return (
-    <section className="py-16 px-5 bg-[#f8f9fc]">
+    <section className="py-5 px-5 bg-[#f8f9fc]">
       <div className="max-w-[1280px] mx-auto">
         <h2 className="text-center text-[clamp(24px,3vw,34px)] font-extrabold text-[#0b1730] mb-3">
           Official <span className="text-[#e85d14]">Forms &amp; Documents</span>
         </h2>
         <div className="w-16 h-1 bg-[#e85d14] rounded mx-auto mb-4" />
-        <p className="text-center text-[#5a6380] text-[15px] mb-12">
+        <p className="text-center text-[#5a6380] text-[15px] mb-10">
           Download and submit the appropriate forms for your academic needs.
         </p>
 
         {forms.length === 0 ? (
-          <p className="text-center text-gray-400 text-sm py-10">No forms available.</p>
+          <p className="text-center text-gray-400 text-sm py-5">No forms available.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {forms.map((form) => (

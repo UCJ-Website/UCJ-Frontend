@@ -118,7 +118,7 @@ export default async function EventDetailsPage({ params }: { params: Promise<{ s
           {/* MAIN ARTICLE */}
           <article className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             {img && (
-              <div className="w-full h-[280px] sm:h-[380px] overflow-hidden bg-[#0b1730]">
+              <div className="w-full aspect-[3/2] overflow-hidden bg-[#0b1730]">
                 <img src={img} alt={event.title} className="w-full h-full object-cover" />
               </div>
             )}

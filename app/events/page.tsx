@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 // .env.local may or may not already include "/api" — normalize it here.
 const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
@@ -22,19 +23,12 @@ interface Event {
   status: "upcoming" | "ongoing" | "past";
   category: "workshop" | "competition" | "ceremony" | "exhibition";
   title: string;
-  time: string;
-  location: string;
   href?: string;
 }
 
-const MONTHS = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-// How many events to request per page from the backend.
-// NOTE: pagination should only kick in once total events exceed this number.
-// If the Laravel controller still hardcodes paginate(5) (or any other
-// number) server-side, this value has to match on the backend too —
-// otherwise the backend's own per-page size wins and pagination will
-// still show up too early.
+
 const PER_PAGE = 10;
 
 // Converts a raw backend event record into the shape this page expects.
@@ -70,8 +64,6 @@ function mapEventItem(item: any): Event {
     status,
     category: (item.type ?? "workshop") as Event["category"],
     title: item.title,
-    time: item.event_time ?? "",
-    location: item.venue ?? "",
     href: `/events/${item.slug}`,
   };
 }
@@ -85,6 +77,8 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "ceremony", label: "Ceremonies" },
   { key: "exhibition", label: "Exhibitions" },
 ];
+
+const VALID_TABS: TabKey[] = ["all", "workshop", "competition", "ceremony", "exhibition"];
 
 const BADGE: Record<string, string> = {
   workshop: "bg-[#8a4a0a] text-white",
@@ -102,10 +96,19 @@ const STATUS_BADGE: Record<string, string> = {
 // Shared grid classes for the event cards — 3 per row on large screens.
 const CARD_GRID = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5";
 
-export default function LatestEventsPage() {
+function LatestEventsContent() {
+  const searchParams = useSearchParams();
+
+  // Read ?category= from the URL once on first render so links like
+  // /events?category=workshop (e.g. the "Workshops" quick-link pill on the
+  // homepage) land directly on the filtered tab instead of "All Events".
+  const categoryParam = searchParams.get("category") as TabKey | null;
+  const initialTab: TabKey =
+    categoryParam && VALID_TABS.includes(categoryParam) ? categoryParam : "all";
+
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [activeMonth, setActiveMonth] = useState<number | "all">("all");
 
   // --- pagination (backend-driven, /api/events?page=N&per_page=N) ------
@@ -330,8 +333,8 @@ export default function LatestEventsPage() {
                   (activeMonth === mo
                     ? "bg-[#e85d14] text-white border-[#e85d14]"
                     : has
-                    ? "bg-white text-[#0b1730] border-gray-200 hover:border-[#e85d14]"
-                    : "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed")
+                      ? "bg-white text-[#0b1730] border-gray-200 hover:border-[#e85d14]"
+                      : "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed")
                 }
               >
                 {m}
@@ -348,18 +351,20 @@ export default function LatestEventsPage() {
 
         {loading ? (
           <div className={`${CARD_GRID} mb-10`}>
-            {[1,2,3].map((i) => <SkeletonCard key={i} />)}
+            {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
           </div>
         ) : displayEvents.length === 0 ? (
           <div className="text-center py-10 text-gray-400 text-[14px] mb-10">No events found.</div>
         ) : (
           <div className={`${CARD_GRID} mb-10`}>
             {displayEvents.map((ev) => (
-              <div key={ev.id} className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col">
-                <div className="relative h-[200px] overflow-hidden bg-[#0b1730]">
+              <div key={ev.id} className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 flex flex-col border-t-4 border-[#e85d14]">
+                <div className="relative aspect-[3/2] overflow-hidden bg-[#0b1730]">
                   {/* Guarded against empty-string src — see Home.tsx fix.
-                      When there's no image, the dark bg-[#0b1730]
-                      background of this wrapper shows on its own. */}
+      When there's no image, the dark bg-[#0b1730]
+      background of this wrapper shows on its own.
+      aspect-[3/2] matches the actual image size (1536x1024) so
+      object-cover fills without cropping the top/bottom. */}
                   {ev.img && (
                     <img
                       src={ev.img}
@@ -382,8 +387,7 @@ export default function LatestEventsPage() {
                   </span>
                   <h3 className="text-[14px] font-semibold text-[#0b1730] leading-[1.5] flex-1">{ev.title}</h3>
                   <div className="flex flex-col gap-1 text-[12px] text-gray-400">
-                    <span className="flex items-center gap-1.5"><i className="fas fa-clock text-[#e85d14] text-[10px]"></i>{ev.time}</span>
-                    <span className="flex items-center gap-1.5"><i className="fas fa-map-marker-alt text-[#e85d14] text-[10px]"></i>{ev.location}</span>
+
                   </div>
                   <Link href={ev.href ?? "#"} className="inline-flex items-center gap-1.5 text-[#e85d14] text-[12px] font-semibold mt-auto pt-2 hover:gap-2.5 transition-all duration-200">
                     View Details <i className="fas fa-chevron-right text-[10px]"></i>
@@ -406,5 +410,17 @@ export default function LatestEventsPage() {
 
       </div>
     </>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary in the App Router — without
+// this wrapper, `next build` fails with "useSearchParams() should be wrapped
+// in a suspense boundary". The fallback is invisible in practice since data
+// fetching inside is fast and client-side.
+export default function LatestEventsPage() {
+  return (
+    <Suspense fallback={null}>
+      <LatestEventsContent />
+    </Suspense>
   );
 }

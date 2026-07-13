@@ -23,7 +23,7 @@ interface CourseSummary {
   level?: string;
   duration?: string;
   description?: string | null;
-  department_id?: number | null; // ← add பண்ணு
+  department_id?: number | string | null;
 }
 
 interface GalleryItem {
@@ -215,7 +215,7 @@ export default function DepartmentTabs({ staff, courses, gallery, research, apiB
                   const courseImg = resolveImage(course.image, apiBase);
                   return (
                     <Link key={course.id} href={`/courses/${course.slug}`} className="flex flex-col rounded-xl overflow-hidden border border-[#e5eaf3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                      <div className="h-[130px] relative overflow-hidden bg-[#0f2a5e]">
+                      <div className="h-[260px] relative overflow-hidden bg-[#0f2a5e] border-solid border-b border-[#e9eaf3]">
                         {courseImg ? (
                           <img src={courseImg} alt={course.title} className="w-full h-full object-cover" />
                         ) : (
@@ -296,7 +296,7 @@ export default function DepartmentTabs({ staff, courses, gallery, research, apiB
                   {!album.images || album.images.length === 0 ? (
                     <EmptyState icon="fa-images" message="No images in this album yet." />
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 ">
                       {album.images.map((img) => {
                         const src = resolveImage(img.url, apiBase);
                         if (!src) return null;
@@ -309,7 +309,7 @@ export default function DepartmentTabs({ staff, courses, gallery, research, apiB
                             <img
                               src={src}
                               alt={img.caption ?? "Gallery image"}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              className="w-full h-full object-contain bg-white p-2 transition-transform duration-300 group-hover:scale-[1.02]"
                             />
                           </button>
                         );
@@ -333,7 +333,7 @@ export default function DepartmentTabs({ staff, courses, gallery, research, apiB
                           onClick={() => openAlbum(item.id)}
                           className="group flex flex-col rounded-xl overflow-hidden border border-[#e5eaf3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-white text-left w-full"
                         >
-                          <div className="relative h-[160px] overflow-hidden bg-[#0f2a5e]">
+                          <div className="relative h-[260px] overflow-hidden bg-[#0f2a5e] border-solid border-b border-[#e9eaf3]">
                             {coverImg ? (
                               <img
                                 src={coverImg}
@@ -360,11 +360,7 @@ export default function DepartmentTabs({ staff, courses, gallery, research, apiB
                             <div className="text-[13.5px] font-semibold text-[#0f2a5e] leading-[1.4] line-clamp-2">
                               {item.title}
                             </div>
-                            {item.description && (
-                              <p className="text-[12px] text-[#6b7280] leading-[1.5] line-clamp-2 mt-0.5">
-                                {item.description}
-                              </p>
-                            )}
+                            
                             {(item.month || item.year) && (
                               <div className="text-[11px] text-[#9ca3af] flex items-center gap-1 mt-1">
                                 <i className="fas fa-calendar-alt text-[10px]"></i>

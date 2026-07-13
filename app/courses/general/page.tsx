@@ -6,8 +6,11 @@ const RAW_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const ORIGIN = RAW_BASE.replace(/\/api\/?$/, "");
 const API_BASE = `${ORIGIN}/api`;
 
+// Resolves a Laravel storage path (e.g. "storage/courses/xyz.jpg") into a
+// full absolute URL against ORIGIN. Handles absolute URLs, null/empty, and
+// stray leading slashes safely.
 function resolveImage(path: string | null | undefined): string {
-  if (!path) return "";
+  if (!path || path.trim() === "") return "";
   if (/^https?:\/\//i.test(path)) return path;
   return `${ORIGIN}/${path.replace(/^\/+/, "")}`;
 }
@@ -15,6 +18,26 @@ function resolveImage(path: string | null | undefined): string {
 interface Qualification {
   title: string;
   description: string;
+}
+
+interface Subject {
+  id: number | string;
+  name: string;
+}
+
+interface Semester {
+  id: number | string;
+  name: string;
+  subjects: Subject[];
+}
+
+// A programme "level" — e.g. Foundation, NVQ Level 5, On the Job Training,
+// NVQ Level 6, as seen on the main HND course pages.
+interface Level {
+  id: number | string;
+  name: string;
+  duration?: string;
+  subtitle?: string | null;
 }
 
 interface FullCourse {
@@ -25,6 +48,8 @@ interface FullCourse {
   name: string;
   desc: string;
   qualifications: Qualification[];
+  semesters: Semester[];
+  levels: Level[];
   duration?: string;
   level?: string;
   delivery?: string;
@@ -43,6 +68,31 @@ function mapFullCourse(item: any): FullCourse {
       }))
     : [];
 
+  const semesters: Semester[] = Array.isArray(item.semesters)
+    ? item.semesters
+        .map((s: any) => ({
+          id: s.id,
+          name: s.name ?? "",
+          subjects: Array.isArray(s.subjects)
+            ? s.subjects.map((sub: any) => ({ id: sub.id, name: sub.name ?? "" }))
+            : [],
+        }))
+        // Semesters that only carry elective_groups (no plain subjects)
+        // are skipped here since this page only renders flat subject lists.
+        .filter((s: Semester) => s.subjects.length > 0)
+    : [];
+
+  // Programme progression (Foundation / NVQ Level 5 / OJT / NVQ Level 6 / OJT),
+  // same shape as the main HND course pages use.
+  const levels: Level[] = Array.isArray(item.levels)
+    ? item.levels.map((l: any) => ({
+        id: l.id,
+        name: l.name ?? "",
+        duration: l.duration ?? "",
+        subtitle: l.subtitle ?? null,
+      }))
+    : [];
+
   return {
     id: item.id,
     img: resolveImage(item.image),
@@ -51,6 +101,8 @@ function mapFullCourse(item: any): FullCourse {
     name: item.title,
     desc: item.description ?? "",
     qualifications,
+    semesters,
+    levels,
     duration: item.duration ?? null,
     level: item.level ?? null,
     delivery: item.delivery_mode ?? item.delivery ?? null,
@@ -64,9 +116,14 @@ async function getPageData(): Promise<PageData> {
     if (!res.ok) throw new Error("fetch failed");
     const payload = await res.json();
     const items = payload?.data?.courses ?? [];
+
+    // IMPORTANT: This page shows GENERAL (foundation) courses only.
+    // is_main === false  -> general course (e.g. ICT, English)
+    // is_main === true   -> HND main course (must NOT appear here)
     const generalOnly = items.filter(
-      (item: any) => !item.is_main && item.is_active
+      (item: any) => item.is_main === false && item.is_active === true
     );
+
     return { courses: generalOnly.map(mapFullCourse) };
   } catch {
     return { courses: [] };
@@ -113,16 +170,19 @@ function CourseFullCard({ course, index }: { course: FullCourse; index: number }
           }}
         />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4">
-          {/* Course image thumbnail */}
-          {course.img && (
-            <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2 border-white/20">
-              <CourseImage
-                src={course.img}
-                alt={course.name}
-                fallbackIcon={course.imgFallback}
-              />
-            </div>
-          )}
+          {/* Course image thumbnail — always render the box so the layout
+              doesn't jump; CourseImage itself falls back to imgFallback
+              icon if the src is empty or fails to load.
+              aspect-[3/2] + w-32 (instead of a cropped w-20 h-20 square)
+              so the actual banner image (1536x1024) shows in full via
+              object-contain in CourseImage, without cutting off the top. */}
+          <div className="w-32 aspect-[3/2] rounded-xl overflow-hidden flex-shrink-0 border-2 border-white/20 bg-white/10">
+            <CourseImage
+              src={course.img}
+              alt={course.name}
+              fallbackIcon={course.imgFallback}
+            />
+          </div>
           <div className="flex flex-col gap-2">
             {/* Badge */}
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white bg-[#e85d14] px-3 py-1 rounded-full w-fit uppercase tracking-wide">
@@ -136,7 +196,7 @@ function CourseFullCard({ course, index }: { course: FullCourse; index: number }
         </div>
       </div>
 
-      {/* ── Body: description + qualifications + info grid ── */}
+      {/* ── Body: description + levels + qualifications + syllabus + info grid ── */}
       <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left / main content — spans 2 cols */}
         <div className="lg:col-span-2 flex flex-col gap-6">
@@ -174,6 +234,41 @@ function CourseFullCard({ course, index }: { course: FullCourse; index: number }
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Syllabus / semester-wise subjects — general courses (ICT,
+              English) have empty `qualifications` but their real content
+              lives in `semesters[].subjects[]`. */}
+          {course.semesters.length > 0 && (
+            <div>
+              <h3 className="text-[15px] font-bold text-[#0b1730] mb-3 flex items-center gap-2">
+                <i className="fas fa-book text-[#e85d14]"></i>
+                Course Syllabus
+              </h3>
+              <div className="flex flex-col gap-4">
+                {course.semesters.map((sem) => (
+                  <div
+                    key={sem.id}
+                    className="bg-[#f8f9fc] rounded-xl p-4 border border-gray-100"
+                  >
+                    <p className="text-[13px] font-bold text-[#0b1730] mb-2">
+                      {sem.name}
+                    </p>
+                    <ul className="flex flex-col gap-1.5">
+                      {sem.subjects.map((sub) => (
+                        <li
+                          key={sub.id}
+                          className="flex items-start gap-2 text-[12.5px] text-[#5a6380] leading-[1.6]"
+                        >
+                          <i className="fas fa-circle text-[#e85d14] text-[4px] mt-[7px] flex-shrink-0"></i>
+                          <span>{sub.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

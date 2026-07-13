@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import GalleryDragScroll from "./GalleryDragScroll";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 interface StaffMember {
   id: number;
@@ -47,21 +48,56 @@ interface Department {
   gallery: GalleryItem[];
 }
 
+
 function getIcon(name: string): string {
   const lower = name.toLowerCase();
+
   if (lower.includes("hrdc")) return "fa-graduation-cap";
   if (lower.includes("career")) return "fa-handshake";
-  if (lower.includes("staff")) return "fa-users";
-  if (lower.includes("managment") || lower.includes("management")) return "fa-building";
+  if (lower.includes("staff development")) return "fa-users";
+  if (
+    lower.includes("ojt") ||
+    lower.includes("on-the-job") ||
+    lower.includes("on the job")
+  ) {
+    return "fa-briefcase";
+  }
+
+  if (
+    lower.includes("ojt") ||
+    lower.includes("on-the-job") ||
+    lower.includes("on the job")
+  ) {
+    return "fa-briefcase";
+  }
+
+  if (
+    lower.includes("managment") ||
+    lower.includes("management")
+  ) {
+    return "fa-building";
+  }
+
   if (lower.includes("stud")) return "fa-book-open";
+
   return "fa-layer-group";
 }
 
-async function getDepartment(slug: string): Promise<Department | null> {
+async function getDepartment(
+  slug: string,
+): Promise<Department | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/departments/${slug}`, { cache: "no-store" });
+    const res = await fetch(
+      `${API_BASE}/api/departments/${slug}`,
+      {
+        cache: "no-store",
+      },
+    );
+
     if (!res.ok) return null;
+
     const json = await res.json();
+
     return json?.data?.department ?? null;
   } catch {
     return null;
@@ -70,8 +106,15 @@ async function getDepartment(slug: string): Promise<Department | null> {
 
 function resolveImageUrl(path: string | null): string | null {
   if (!path) return null;
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return `${API_BASE}/storage/${path}`;
+
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  ) {
+    return path;
+  }
+
+  return `${API_BASE}/storage/${path.replace(/^\/+/, "")}`;
 }
 
 export default async function UnitDetailPage({
@@ -80,11 +123,30 @@ export default async function UnitDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+
   const unit = await getDepartment(slug);
+
   if (!unit) return notFound();
 
   const staff = unit.staff ?? [];
   const gallery = unit.gallery ?? [];
+
+  const isOjtUnit =
+    slug === "ojt-unit" ||
+    unit.short_code?.toUpperCase() === "OJT" ||
+    unit.name.toLowerCase().includes("on-the-job training") ||
+    unit.name.toLowerCase().includes("ojt");
+
+  const ojtDescription =
+    "The On-the-Job Training Division coordinates and facilitates in-plant and on-site training opportunities for students in government and private sector organizations. It focuses on developing practical skills, providing industry exposure and supervised workplace learning, improving employability, and ensuring the effective performance evaluation of trainees.";
+
+  const displayDescription =
+    unit.description ||
+    (isOjtUnit ? ojtDescription : unit.short_description);
+
+  const displayVision = unit.vision;
+
+  const displayMission = unit.mission;
 
   const icon = getIcon(unit.name);
   const bannerUrl = resolveImageUrl(unit.banner_image);
@@ -92,9 +154,9 @@ export default async function UnitDetailPage({
 
   return (
     <div className="min-h-screen bg-[#f1f5f9]">
-      {/* Banner — full width, no side gaps */}
+      {/* ===== BANNER ===== */}
       <div
-        className="w-full text-center py-12 px-6"
+        className="w-full px-6 py-12 text-center"
         style={
           bannerUrl
             ? {
@@ -109,127 +171,193 @@ export default async function UnitDetailPage({
         }
       >
         {/* Breadcrumb */}
-        <div className="text-[13px] text-white/65 mb-3">
-          <Link href="/" className="hover:text-white transition-colors">Home</Link>
+        <div className="mb-3 text-[13px] text-white/65">
+          <Link
+            href="/"
+            className="transition-colors hover:text-white"
+          >
+            Home
+          </Link>
+
           <span className="mx-1.5">›</span>
-          <Link href="/academic" className="hover:text-white transition-colors">Academic</Link>
+
+          <Link
+            href="/academic"
+            className="transition-colors hover:text-white"
+          >
+            Academic
+          </Link>
+
           <span className="mx-1.5">›</span>
+
+          <Link
+            href="/academic/units"
+            className="transition-colors hover:text-white"
+          >
+            Units
+          </Link>
+
+          <span className="mx-1.5">›</span>
+
           <span className="text-white">{unit.name}</span>
         </div>
 
         {/* Icon / Logo */}
-        <div className="w-[60px] h-[60px] rounded-2xl bg-white/10 text-white flex items-center justify-center text-[26px] mx-auto mb-4 overflow-hidden">
+        <div className="mx-auto mb-4 flex h-[60px] w-[60px] items-center justify-center overflow-hidden rounded-2xl bg-white/10 text-[26px] text-white">
           {logoUrl ? (
-            <img src={logoUrl} alt={unit.name} className="w-full h-full object-contain p-1" />
+            <img
+              src={logoUrl}
+              alt={unit.name}
+              className="h-full w-full object-contain p-1"
+            />
           ) : (
-            <i className={`fas ${icon}`}></i>
+            <i className={`fas ${icon}`} />
           )}
         </div>
 
-        <span className="inline-block bg-white/15 text-white text-[11px] font-bold px-3 py-1 rounded-full tracking-widest uppercase mb-3">
+        <span className="mb-3 inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white">
           {unit.short_code}
         </span>
 
-        <h1 className="text-white font-bold" style={{ fontSize: "clamp(24px,4vw,38px)" }}>
+        <h1
+          className="font-bold text-white"
+          style={{
+            fontSize: "clamp(24px,4vw,38px)",
+          }}
+        >
           {unit.name}
         </h1>
-        <p className="text-white/70 text-[14px] max-w-[500px] mx-auto mt-3 leading-[1.6]">
+
+        <p className="mx-auto mt-3 max-w-[600px] text-[14px] leading-[1.7] text-white/70">
           {unit.short_description}
         </p>
       </div>
 
-      {/* Content */}
-      <main className="w-full max-w-[1350px] mx-auto px-4 py-10">
-
-        {/* Overview */}
-        <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
-          <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-3">
-           Description
+      {/* ===== CONTENT ===== */}
+      <main className="mx-auto w-full max-w-[1350px] px-4 py-10">
+        {/* ===== DESCRIPTION ===== */}
+        <div className="mb-6 rounded-[14px] border border-[#e5eaf3] bg-white p-8 shadow-sm">
+          <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#2563b0]">
+            Description
           </div>
-          <p className="text-[#4b5563] text-[15px] leading-7">
-            {unit.description || unit.short_description}
+
+          <p className="text-[15px] leading-7 text-[#4b5563]">
+            {displayDescription}
           </p>
-          
         </div>
 
-        {/* Vision / Mission */}
-        {(unit.vision || unit.mission) && (
-          <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm grid sm:grid-cols-2 gap-6">
-            {unit.vision && (
+        {/* ===== VISION / MISSION ===== */}
+        {(displayVision || displayMission) && (
+          <div className="mb-6 grid gap-6 rounded-[14px] border border-[#e5eaf3] bg-white p-8 shadow-sm sm:grid-cols-2">
+            {displayVision && (
               <div>
-                <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-2">
+                <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#2563b0]">
                   Vision
                 </div>
-                <p className="text-[#4b5563] text-[14px] leading-6">{unit.vision}</p>
+
+                <p className="text-[14px] leading-6 text-[#4b5563]">
+                  {displayVision}
+                </p>
               </div>
             )}
-            {unit.mission && (
+
+            {displayMission && (
               <div>
-                <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-2">
+                <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#2563b0]">
                   Mission
                 </div>
-                <p className="text-[#4b5563] text-[14px] leading-6">{unit.mission}</p>
+
+                <p className="text-[14px] leading-6 text-[#4b5563]">
+                  {displayMission}
+                </p>
               </div>
             )}
           </div>
         )}
 
-        {/* Gallery */}
+        {/* ===== GALLERY ===== */}
         {gallery.length > 0 && (
-          <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
-            <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-5">
-              <i className="fas fa-images mr-1.5"></i> Gallery
+          <div className="mb-6 rounded-[14px] border border-[#e5eaf3] bg-white p-8 shadow-sm">
+            <div className="mb-5 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#2563b0]">
+              <i className="fas fa-images mr-1.5" />
+              Gallery
             </div>
-            <GalleryDragScroll items={gallery} apiBase={API_BASE} />
+
+            <GalleryDragScroll
+              items={gallery}
+              apiBase={API_BASE}
+            />
           </div>
         )}
 
-        {/* Staff */}
+        {/* ===== STAFF ===== */}
         {staff.length > 0 && (
-          <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
-            <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-5">
-              <i className="fas fa-users mr-1.5"></i> Staff Members
+          <div className="mb-6 rounded-[14px] border border-[#e5eaf3] bg-white p-8 shadow-sm">
+            <div className="mb-5 text-[12px] font-semibold uppercase tracking-[0.1em] text-[#2563b0]">
+              <i className="fas fa-users mr-1.5" />
+              Staff Members
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {staff.map((member) => (
-                <div
+                <Link
                   key={member.id}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-[#e5eaf3] hover:shadow-sm transition-shadow"
+                  href={
+                    member.slug
+                      ? `/staff/${member.slug}`
+                      : "#"
+                  }
+                  className="flex items-center gap-4 rounded-xl border border-[#e5eaf3] p-4 transition-all hover:-translate-y-0.5 hover:border-[#2563b0]/30 hover:shadow-sm"
                 >
-                  <div className="w-[56px] h-[56px] rounded-full overflow-hidden bg-[#eff6ff] text-[#2563b0] flex items-center justify-center text-[20px] font-semibold shrink-0">
+                  <div className="flex h-[56px] w-[56px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#eff6ff] text-[20px] font-semibold text-[#2563b0]">
                     {member.photo ? (
-                      <img src={resolveImageUrl(member.photo) ?? ""} alt={member.name} className="w-full h-full object-cover" />
+                      <img
+                        src={
+                          resolveImageUrl(member.photo) ?? ""
+                        }
+                        alt={member.name}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       member.name.charAt(0)
                     )}
                   </div>
 
                   <div className="min-w-0">
-                    <div className="font-semibold text-[#0f2a5e] text-[14px] truncate">
+                    <div className="truncate text-[14px] font-semibold text-[#0f2a5e]">
                       {member.name}
                     </div>
-                    {(member.role_type || member.position) && (
-                      <div className="text-[12px] text-[#2563b0] mb-1">
-                        {member.role_type ?? member.position}
+
+                    {(member.role_type ||
+                      member.position) && (
+                      <div className="mb-1 text-[12px] text-[#2563b0]">
+                        {member.role_type ??
+                          member.position}
                       </div>
                     )}
+
                     {member.phone && (
-                      <div className="text-[12px] text-[#6b7280] flex items-center gap-1.5">
-                        <i className="fas fa-phone text-[10px]"></i> {member.phone}
+                      <div className="flex items-center gap-1.5 text-[12px] text-[#6b7280]">
+                        <i className="fas fa-phone text-[10px]" />
+                        {member.phone}
                       </div>
                     )}
+
                     {member.email && (
-                      <div className="text-[12px] text-[#6b7280] flex items-center gap-1.5 truncate">
-                        <i className="fas fa-envelope text-[10px]"></i> {member.email}
+                      <div className="flex truncate items-center gap-1.5 text-[12px] text-[#6b7280]">
+                        <i className="fas fa-envelope text-[10px]" />
+                        {member.email}
                       </div>
                     )}
+
                     {member.office && (
-                      <div className="text-[12px] text-[#6b7280] flex items-center gap-1.5">
-                        <i className="fas fa-map-marker-alt text-[10px]"></i> {member.office}
+                      <div className="flex items-center gap-1.5 text-[12px] text-[#6b7280]">
+                        <i className="fas fa-map-marker-alt text-[10px]" />
+                        {member.office}
                       </div>
                     )}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -237,9 +365,10 @@ export default async function UnitDetailPage({
 
         <Link
           href="/academic"
-          className="text-[#2563b0] font-medium text-[14px] flex items-center gap-2 hover:gap-3 transition-all"
+          className="flex items-center gap-2 text-[14px] font-medium text-[#2563b0] transition-all hover:gap-3"
         >
-          <i className="fas fa-arrow-left text-[12px]"></i> Back to Academic
+          <i className="fas fa-arrow-left text-[12px]" />
+          Back to Academic
         </Link>
       </main>
     </div>

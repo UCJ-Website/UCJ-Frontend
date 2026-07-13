@@ -96,6 +96,7 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
     { icon: "fa-graduation-cap", label: "HRDC Unit", href: "/academic/units/hrdc-unit", isHeader: false },
     { icon: "fa-handshake", label: "Career Guidance Unit", href: "/academic/units/career-guidance-unit", isHeader: false },
     { icon: "fa-users", label: "Staff Development Unit", href: "/academic/units/staff-development-unit", isHeader: false },
+    { icon: "fa-handshake", label: "OJT Unit", href: "/academic/units/ojt-unit", isHeader: false },
   ];
 
   const mobileGroups = [
@@ -209,7 +210,11 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
               </Link>
               <div
                 className="dropdown-panel mega-panel"
-                style={closedGroup === "about" ? { display: "none" } : undefined}
+                style={{
+                  width: "300px",
+                  minWidth: "300px",
+                  ...(closedGroup === "about" ? { display: "none" } : {}),
+                }}
               >
                 <div className="flex">
                   <div className="flex-1 p-4 border-r border-gray-100">
@@ -221,42 +226,28 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
                       <i className="fas fa-bullseye text-gray-400 w-[18px] text-center" />
                       Vision, Mission &amp; History
                     </Link>
+
                     <Link href="/academic/units/board-of-management" onClick={() => closeNow("about")} className={di}>
                       <i className="fas fa-sitemap text-gray-400 w-[18px] text-center" />
                       Board of Management
                     </Link>
+
                     <Link href="/academic/units/board-of-studies" onClick={() => closeNow("about")} className={di}>
                       <i className="fas fa-book-open text-gray-400 w-[18px] text-center" />
                       Board of Studies
                     </Link>
-                  </div>
-                  <div className="flex-1 p-4">
-                    <div className="mega-col-header">
-                      <i className="fas fa-users text-[#e85d14]" />
+
+                    <Link
+                      href="/about/lead-roles"
+                      onClick={() => closeNow("about")}
+                      className={di}
+                    >
+                      <i className="fas fa-users text-gray-400 w-[18px] text-center" />
                       Lead Roles
-                    </div>
-                    <Link href="/about/director" onClick={() => closeNow("about")} className={di}>
-                      <i className="fas fa-user-tie text-gray-400 w-[18px] text-center" />
-                      Director
-                    </Link>
-                    <Link href="/about/former-director" onClick={() => closeNow("about")} className={di}>
-                      <i className="fas fa-history text-gray-400 w-[18px] text-center" />
-                      Former Director
-                    </Link>
-                    <Link href="/about/assistant-registrar" onClick={() => closeNow("about")} className={di}>
-                      <i className="fas fa-user-edit text-gray-400 w-[18px] text-center" />
-                      Assistant Registrar
-                    </Link>
-                    <Link href="/about/assistant-bursar" onClick={() => closeNow("about")} className={di}>
-                      <i className="fas fa-hand-holding-usd text-gray-400 w-[18px] text-center" />
-                      Assistant Bursar
-                    </Link>
-                    <Link href="/about/assistant-librarian" onClick={() => closeNow("about")} className={di}>
-                      <i className="fas fa-user-cog text-gray-400 w-[18px] text-center" />
-                      Assistant Librarian
                     </Link>
 
                   </div>
+
                 </div>
               </div>
             </div>
@@ -331,6 +322,7 @@ export default function Navbar({ courses = [], departments = [] }: NavbarProps) 
 
                       { icon: "fa-handshake", label: "Career Guidance Unit", href: "/academic/units/career-guidance-unit" },
                       { icon: "fa-users", label: "Staff Development Unit", href: "/academic/units/staff-development-unit" },
+                      { icon: "fa-briefcase", label: "OJT Unit", href: "/academic/units/ojt-unit" },
                       { icon: "fa-graduation-cap", label: "HRDC Unit", href: "/academic/units/hrdc-unit" },
                     ].map(item => (
                       <Link key={item.label} href={item.href} onClick={() => closeNow("academic")} className={di}>

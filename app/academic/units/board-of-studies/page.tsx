@@ -2,7 +2,6 @@
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import UnitGallery from "../UnitGallery";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -10,6 +9,7 @@ interface StaffMember {
   id: number;
   name: string;
   position?: string | null;
+  role_type?: string | null;
   email?: string | null;
   phone?: string | null;
   photo?: string | null;
@@ -147,7 +147,7 @@ export default async function BoardOfStudiesPage() {
         {/* Overview */}
         <div className="bg-white rounded-[14px] border border-[#e5eaf3] p-8 mb-6 shadow-sm">
           <div className="text-[12px] font-semibold tracking-[0.1em] uppercase text-[#2563b0] mb-3">
-            Discription
+            Description
           </div>
           <p className="text-[#4b5563] text-[15px] leading-7">
             {unit.description ?? unit.short_description}
@@ -194,7 +194,7 @@ export default async function BoardOfStudiesPage() {
                       Name
                     </th>
                     <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
-                      Position
+                      Role
                     </th>
                     <th className="text-left text-[11px] font-semibold tracking-wider uppercase text-[#6b7280] py-3 px-3">
                       Email
@@ -229,7 +229,7 @@ export default async function BoardOfStudiesPage() {
                           {s.name}
                         </td>
                         <td className="py-3 px-3 text-[13px] text-[#6b7280]">
-                          {s.position ?? "—"}
+                          {s.role_type ?? s.position ?? "—"}
                         </td>
                         <td className="py-3 px-3 text-[13px]">
                           {s.email ? (
@@ -286,8 +286,10 @@ export default async function BoardOfStudiesPage() {
                       <div className="font-semibold text-[#1e3a5f] text-[14px]">
                         {s.name}
                       </div>
-                      {s.position && (
-                        <div className="text-[12px] text-[#6b7280]">{s.position}</div>
+                      {(s.role_type || s.position) && (
+                        <div className="text-[12px] font-medium text-[#2563b0]">
+                          {s.role_type ?? s.position}
+                        </div>
                       )}
                       {s.email && (
                         <a
@@ -332,10 +334,6 @@ export default async function BoardOfStudiesPage() {
             </div>
           </div>
         )}
-
-        {/* Gallery */}
-        <UnitGallery gallery={unit.gallery} />
-
         <Link
           href="/academic"
           className="text-[#2563b0] font-medium text-[14px] flex items-center gap-2 hover:gap-3 transition-all"

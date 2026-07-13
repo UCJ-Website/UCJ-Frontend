@@ -51,23 +51,23 @@ const management: Record<string, {
   },
   "admin-office": {
     icon: "fa-pen-nib",
-    title: "Admin Office",
-    subtitle: "University college of Jaffna — Administrative Operations",
+    title: "Administration",
+    subtitle: "Assistant Registrar & General Office",
     info: [
-      { label: "Department", value: "Administrative Office" },
-      { label: "Location", value: "No 29 Brown Road, Kokuvil East, Jaffna" },
+      { label: "Location", value: "Ground Floor, next to Reception" },
+      { label: "Staff Pool", value: "5 Mgmt. Assistants · 1 Maint. Technician · 2 Drivers · 5 Office Aids" },
       { label: "Office Hours", value: "Mon – Fri, 8:30 AM – 4:00 PM" },
       { label: "Email", value: "info@ucj.ac.lk" },
     ],
     description:
-      "The Administrative Office manages the day-to-day operational backbone of University College of Jaffna. From maintaining official academic records and handling student admissions to managing documentation and institutional correspondence, the Admin Office ensures that all administrative processes run smoothly and in compliance with University of Jaffna regulations.",
+      "The Administration division of UCJ is situated on the Ground Floor, next to the reception area, and consists of the office of the Assistant Registrar and the General Office. This division is responsible for the overall administration of the college, including General Administration, Establishment, Student Admissions & Registration, and Student Affairs. There is an ongoing need to improve administrative efficiency, strengthen staffing through recruitment and training, enhance infrastructure, and create clear promotion opportunities for administrative staff.",
     responsibilities: [
-      "Academic records management",
-      "Student admissions coordination",
-      "Official correspondence handling",
-      "Examination administration support",
-      "Staff HR coordination",
-      "Institutional documentation",
+      "General administration & institutional records",
+      "Establishment matters",
+      "Student admissions & registration",
+      "Student affairs",
+      "Staff recruitment & training coordination",
+      "Infrastructure and promotion-pathway improvements",
     ],
     external_url: "",
     external_label: "Visit Registrar's Office",
@@ -76,26 +76,53 @@ const management: Record<string, {
   "finance": {
     icon: "fa-coins",
     title: "Finance",
-    subtitle: "University college of Jaffna — Financial Management",
+    subtitle: "Assistant Bursar Office",
     info: [
-      { label: "Department", value: "Finance" },
-      { label: "Location", value: "No 29 Brown Road, Kokuvil East, Jaffna" },
+      { label: "Team", value: "1 Assistant Bursar · 3 Management Assistants" },
+      { label: "Standard", value: "SLPSAS Compliant" },
       { label: "Office Hours", value: "Mon – Fri, 8:30 AM – 4:00 PM" },
       { label: "Contact", value: "+94 0212 217791" },
     ],
     description:
-      "The Finance  division is responsible for all financial operations at University College of Jaffna. This includes budget planning, expenditure monitoring, fee collection, payroll, and financial reporting — all conducted in accordance with the financial regulations of the University of Jaffna and the Government of Sri Lanka.",
+      "The Finance division of University College of Jaffna prepares annual financial statements in compliance with Sri Lanka Public Sector Accounting Standards (SLPSAS), submits them for government audit, prepares annual budgets, manages all payments, oversees capital works, and maintains the fixed asset register. The section manages increasing budgets from 2025 to 2026, reflecting institutional growth. Future plans include implementing the Govpay system and adopting the Electronic Government Procurement (eGP) system to improve efficiency and transparency.",
     responsibilities: [
-      "Budget planning and allocation",
-      "Student fee collection and records",
-      "Payroll and staff remuneration",
-      "Financial reporting and audits",
-      "Procurement and asset management",
-      "Grant and fund management",
+      "SLPSAS-compliant financial statements",
+      "Government audit submissions",
+      "Annual budget preparation",
+      "Payments & capital works oversight",
+      "Fixed asset register maintenance",
+      "Upcoming: Govpay & eGP system adoption",
     ],
     external_url: "https://",
     external_label: "Visit Bursar's Office",
     subcategories: ["Finance Branch"],
+  },
+  "library": {
+    icon: "fa-book-open",
+    title: "Library",
+    subtitle: "Assistant Librarian Office",
+    info: [
+      { label: "Team", value: "1 Assistant Librarian · 1 Office Assistant" },
+      { label: "Collection", value: "~3,500 Books & Research Materials" },
+      { label: "Office Hours", value: "Mon – Fri, 8:30 AM – 4:00 PM" },
+      { label: "Status", value: "1 Management Assistant post vacant" },
+    ],
+    description:
+      "The library serves as a central hub for learning, research, and academic support by providing access to print and digital resources, reference services, reading spaces, and technology-enabled information services. It currently maintains nearly 3,500 books, journals, and research materials, though some subject areas, infrastructure, and user support services require further improvement. The library aims to strengthen its services by expanding print and digital collections, introducing e-resources, automating library operations, developing digital library facilities, upgrading infrastructure and study spaces, improving accessibility, and enhancing staff capacity through continuous professional development.",
+    responsibilities: [
+      "Print & digital collection management",
+      "Reference & information services",
+      "Reading space & study infrastructure",
+      "Introducing e-resources & digital library facilities",
+      "Library operations automation",
+      "Accessibility & staff capacity development",
+    ],
+    external_url: "",
+    external_label: "Visit Library",
+    // NOTE: adjust this to match the exact `subcategory` value used for
+    // library staff in the DB once confirmed — falling back to a position
+    // match below in the meantime, same as the /staff & /people pages.
+    subcategories: ["Library Branch"],
   },
 };
 
@@ -214,6 +241,30 @@ function filterBySubcategory(all: Staff[], subcategories: string[]): Staff[] {
   return all.filter((s) => subcategories.includes((s.subcategory ?? "").trim()));
 }
 
+// Library staff: the exact `subcategory` value for the Library Branch
+// hasn't been confirmed in the DB yet, so this falls back to matching on
+// `position === "Assistant Librarian"` (the same reliable check used on
+// the /people/leadership page) in addition to the subcategory list above.
+function filterLibraryStaff(all: Staff[], subcategories: string[]): Staff[] {
+  return all.filter(
+    (s) =>
+      subcategories.includes((s.subcategory ?? "").trim()) ||
+      (s.position ?? "").trim().toLowerCase() === "assistant librarian"
+  );
+}
+
+// Admin Office staff: some Management Assistants are tagged with a
+// position of "Management Assistant - Grade III" but their subcategory
+// isn't set to "Administrative Branch", so they were being missed by the
+// exact subcategory match alone. Include them via position as well.
+function filterAdminStaff(all: Staff[], subcategories: string[]): Staff[] {
+  return all.filter(
+    (s) =>
+      subcategories.includes((s.subcategory ?? "").trim()) ||
+      (s.position ?? "").trim().toLowerCase() === "management assistant - grade iii"
+  );
+}
+
 export default async function AdminSlugPage({
   params,
 }: {
@@ -227,7 +278,32 @@ export default async function AdminSlugPage({
   const staff =
     slug === "director-office"
       ? allStaff.filter(isCurrentDirector)
+      : slug === "library"
+      ? filterLibraryStaff(allStaff, item.subcategories)
+      : slug === "admin-office"
+      ? filterAdminStaff(allStaff, item.subcategories)
       : filterBySubcategory(allStaff, item.subcategories);
+
+  // Admin Office: order staff by position priority — Management
+  // Assistant - Grade III first, then Maintenance Technician, then
+  // Office Assistant, then Driver. Anyone with an unlisted position
+  // falls to the end. Order within the same position is preserved
+  // (stable sort).
+  if (slug === "admin-office") {
+    const priorityOrder = [
+      "management assistant - grade iii",
+      "maintenance technician",
+      "office assistant",
+      "driver",
+    ];
+    staff.sort((a, b) => {
+      const rank = (s: Staff) => {
+        const index = priorityOrder.indexOf((s.position ?? "").trim().toLowerCase());
+        return index === -1 ? priorityOrder.length : index;
+      };
+      return rank(a) - rank(b);
+    });
+  }
   const formerDirectors = slug === "director-office" ? allStaff.filter(isFormerDirectorMention) : [];
 
   return (
